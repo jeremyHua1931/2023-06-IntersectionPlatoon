@@ -228,10 +228,50 @@ void ApplVPlatoonMg::onBeaconVehicle(BeaconVehicle* wsm)
 }
 
 
+// leader enter ZONE, receive BeaconRSU
+// but only reaction once!!!!
 void ApplVPlatoonMg::onBeaconRSU(BeaconRSU* wsm)
 {
     // pass it down!
     super::onBeaconRSU(wsm);
+
+    // only leader responds beaconRSU
+    if(vehicleState == state_platoonLeader)
+    {
+        //only send once
+        if(!haveSendPltInfo)
+        {
+            // collect info
+            std::string senderRSU = wsm->getSender();
+            TraCICoord pos = TraCI->vehicleGetPosition(SUMOID);
+            double speed = TraCI->vehicleGetSpeed(SUMOID);
+            LOG_INFO << boost::format("%s send PltInfo: ReceiverID: %s, TG: %.2f, pos_x: %.2f, pos_y: %.2f, speed: %.2f \n")
+                        %SUMOID.c_str()
+                        %senderRSU
+                        %TG
+                        %pos.x
+                        %pos.y
+                        %speed
+                    << std::flush;
+
+            for (auto& member : plnMembersList) {
+                double memberTG = TraCI->vehicleGetTimeGap(member.c_str());
+                LOG_INFO << boost::format("%s TG: %.2f\n") %member.c_str() %memberTG << std::flush;
+                }
+
+            std::vector<std::string> tlList = TraCI->TLGetIDList();
+            for (std::size_t i = 0; i < tlList.size(); ++i)
+            {
+                LOG_INFO << boost::format("%s\n") %tlList[i] << std::flush;
+            }
+            int t = TraCI->TLGetNextSwitchTime("2");
+            LOG_INFO << boost::format("%d\n") %t << std::flush;
+
+            // call sendPltInfo
+            sendPltInfo(senderRSU, TG, pos, speed);
+            haveSendPltInfo = true;
+        }
+    }
 }
 
 
@@ -295,6 +335,19 @@ void ApplVPlatoonMg::sendPltData(std::string receiverID, uCommand_t msgType, std
     sendDelayed(wsm, uniform(0,SEND_DELAY_OFFSET), lowerLayerOut);
 }
 
+// leader enters the intersection ZONE, receive RSUBeacon, send PltInfo
+// called by onBeaconRSU
+void ApplVPlatoonMg::sendPltInfo(std::string receiverID, double TG, TraCICoord pos, double speed)
+{
+
+}
+
+// leader receives the PltCtrl by RSU
+// then change speed to ref_v and change optSize
+void ApplVPlatoonMg::onPltCtrl(PltCtrl* wsm)
+{
+
+}
 
 // change the blue color of the follower to show depth
 // only platoon leader can call this!

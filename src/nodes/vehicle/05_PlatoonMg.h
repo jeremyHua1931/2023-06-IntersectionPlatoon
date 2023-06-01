@@ -29,6 +29,8 @@
 #define APPLVPLATOONMG_H
 
 #include "nodes/vehicle/04_Platoon.h"
+#include "msg/PltInfo_m.h"
+#include "msg/PltCtrl_m.h"
 
 namespace VENTOS {
 
@@ -53,6 +55,8 @@ private:
     typedef ApplVPlatoon super;
 
     bool busy = false;
+
+    bool haveSendPltInfo = false; // leader only send once when entering ZONE
 
     // --[ entry ]--
     omnetpp::cMessage* entryManeuverEvt = NULL;
@@ -300,6 +304,8 @@ protected:
 
 private:
     void sendPltData(std::string, uCommand_t, std::string, value_t value = value_t());
+    void sendPltInfo(std::string receiverID, double TG, TraCICoord pos, double speed); // leader send PltInfo.msg
+    void onPltCtrl(PltCtrl* wsm);  // leader receive PltCtrl
     void updateColorDepth();
     void setVehicleState(states_num_t vehState, std::string maneuver = "");
 

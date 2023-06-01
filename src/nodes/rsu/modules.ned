@@ -119,15 +119,15 @@ simple ApplRSUCRL extends ApplRSUAID
 }
 
 
-simple ApplRSUYourCode extends ApplRSUCRL
+simple ApplRSUIntersection extends ApplRSUCRL
 {
     parameters:
-        @class(VENTOS::ApplRSUYourCode);
+        @class(VENTOS::ApplRSUIntersection);
         @display("i=block/app2");
 }
 
 
-simple ApplRSUManager extends ApplRSUYourCode
+simple ApplRSUManager extends ApplRSUIntersection
 {
     parameters:
         @class(VENTOS::ApplRSUManager);

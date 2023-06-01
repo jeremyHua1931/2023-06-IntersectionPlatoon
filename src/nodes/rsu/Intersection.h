@@ -1,8 +1,8 @@
 /****************************************************************************/
-/// @file    Manager.h
-/// @author  Mani Amoozadeh <maniam@ucdavis.edu>
+/// @file    Intersection.h
+/// @author
 /// @author  second author name
-/// @date    August 2013
+/// @date    December 2017
 ///
 /****************************************************************************/
 // VENTOS, Vehicular Network Open Simulator; see http:?
@@ -25,28 +25,35 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //
 
-#ifndef APPLRSUMANAGER_H_
-#define APPLRSUMANAGER_H_
+#ifndef APPLRSUINTERSECTION_H
+#define APPLRSUINTERSECTION_H
 
-#include "Intersection.h"
+#include "nodes/rsu/05_CRL.h"
+#include "msg/dataMsg_m.h"
+#include "msg/PltInfo_m.h"
+#include "msg/PltCtrl_m.h"
 
 namespace VENTOS {
 
-class ApplRSUManager : public ApplRSUIntersection
+class ApplRSUIntersection : public ApplRSUCRL
 {
 private:
-    typedef ApplRSUIntersection super;
-
-    omnetpp::simsignal_t Signal_executeEachTS;
+    typedef ApplRSUCRL super;
+    void sendPltCtrl(std::string receiverID, std::string receivingPlatoonID, double refSpeed, int optSize); //sendPltCtrl.msg after calculate
 
 public:
-    ~ApplRSUManager();
+    ~ApplRSUIntersection();
     virtual void initialize(int stage);
     virtual void finish();
-    virtual void handleLowerMsg(omnetpp::cMessage* msg);
-    virtual void handleSelfMsg(omnetpp::cMessage* msg);
-    virtual void receiveSignal(omnetpp::cComponent *, omnetpp::simsignal_t, long, cObject* details);
-    virtual void receiveSignal(omnetpp::cComponent *, omnetpp::simsignal_t, cObject *, cObject* details);
+
+protected:
+    virtual void handleSelfMsg(omnetpp::cMessage*);
+    void onBeaconVehicle(BeaconVehicle* wsm);
+    void onBeaconRSU(BeaconRSU* wsm);
+    void onDataMsg(dataMsg *wsm);
+    void onPltInfo(PltInfo* wsm); //receive PltInfo.msg from leader entering ZONE
+
+    void executeEachTimeStep();
 };
 
 }

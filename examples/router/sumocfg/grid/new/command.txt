@@ -1,2 +1,0 @@
-Commands to convert from node file and edge file:
-	netconvert --node-files=hello.nod.xml --edge-files=hello.edg.xml --output-file=hello.net.xml --no-internal-links

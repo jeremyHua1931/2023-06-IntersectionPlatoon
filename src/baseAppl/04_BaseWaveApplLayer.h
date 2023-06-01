@@ -49,6 +49,8 @@ typedef enum WaveApplMessageTypes {
     TYPE_LANECHANGE_DATA,    // laneChange
     TYPE_PLATOON_DATA,       // platoonMsg
     TYPE_CRL_PIECE,
+    TYPE_PLATOON_INFO,         //platoonInfo, leader to RSU
+    TYPE_PLATOON_CONTROL,      //platoonControl, RSU to leader
 
     TYPE_BROADCAST_DATA,     // message dissemination
 
