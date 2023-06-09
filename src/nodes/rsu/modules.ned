@@ -124,7 +124,7 @@ simple ApplRSUIntersection extends ApplRSUCRL
     parameters:
         @class(VENTOS::ApplRSUIntersection);
         @display("i=block/app2");
-        double Vmax = default(30);
+        double Vmax = default(20);
         double Vmin = default(10);
 }
 

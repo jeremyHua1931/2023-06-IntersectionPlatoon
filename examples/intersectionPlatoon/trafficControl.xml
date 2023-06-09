@@ -1,12 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<trafficControl id="example_0">
+<trafficControl id="example_1">
 
-    <speed id="veh" begin="1" value="20" />
+    <speed id="veh" begin="0.1" value="14" />
+    <speed id="veh.5" begin="90" value="20" />
+
+</trafficControl>
 
 
-    <!-- <pltLeave pltId="veh" leaveIndex="5" begin="180" leaveDirection="left" />
-    <pltLeave pltId="veh" leaveIndex="3" begin="200" />
-    <pltLeave pltId="veh" leaveIndex="0" begin="240" /> -->
+<trafficControl id="example_2">
+
+    <speed id="veh" begin="0.1" value="13" />
+    <speed id="veh" begin="90" value="20" />
+
+</trafficControl>
+
+
+<trafficControl id="example_3">
+
+    <speed id="veh" begin="0.1" value="13" />
+    <speed id="veh" begin="90" value="20" />
+
+</trafficControl>
+
+
+<trafficControl id="example_4">
+
+    <speed id="veh" begin="0.1" value="13" />
 
 </trafficControl>
