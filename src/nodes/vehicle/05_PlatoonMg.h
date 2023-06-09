@@ -301,11 +301,12 @@ protected:
     virtual void onBeaconVehicle(BeaconVehicle*);
     virtual void onBeaconRSU(BeaconRSU*);
     virtual void onPlatoonMsg(PlatoonMsg* wsm);
+    virtual void onPltInfo(PltInfo* wsm);
+    virtual void onPltCtrl(PltCtrl* wsm);  // leader receive PltCtrl
 
 private:
     void sendPltData(std::string, uCommand_t, std::string, value_t value = value_t());
     void sendPltInfo(std::string receiverID, double TG, TraCICoord pos, double speed); // leader send PltInfo.msg
-    void onPltCtrl(PltCtrl* wsm);  // leader receive PltCtrl
     void updateColorDepth();
     void setVehicleState(states_num_t vehState, std::string maneuver = "");
 

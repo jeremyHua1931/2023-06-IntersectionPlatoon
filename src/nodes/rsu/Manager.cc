@@ -133,6 +133,17 @@ void ApplRSUManager::handleLowerMsg(omnetpp::cMessage* msg)
     {
         // ignore
     }
+    else if(msg->getKind() == TYPE_PLATOON_INFO)
+    {
+        PltInfo* wsm = dynamic_cast<PltInfo*>(msg);
+        ASSERT(wsm);
+
+        onPltInfo(wsm);
+    }
+    else if(msg->getKind() == TYPE_PLATOON_DATA)
+    {
+        // ignore
+    }
     else
         throw omnetpp::cRuntimeError("RSU %s received unsupported msg %s of type %d!", SUMOID.c_str(), msg->getName(), msg->getKind());
 

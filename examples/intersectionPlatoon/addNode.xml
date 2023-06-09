@@ -6,7 +6,7 @@
 	<rsu id="RSU" pos="-11.5,-11.5,0"  />
     
     <!-- platoon-->
-    <vehicle_platoon id="veh" type="TypeCACC1" size="6" route="route1" departPos="100" departLane="1"
-    platoonMaxSpeed="0" pltMgmtProt="true" optSize="4" maxSize="10" />
+    <vehicle_platoon id="veh" type="TypeCACC1" size="8" route="route1" departPos="300" departLane="1"
+    platoonMaxSpeed="0" pltMgmtProt="true" optSize="8" maxSize="10" interGap="3"/>
 
 </addNode>

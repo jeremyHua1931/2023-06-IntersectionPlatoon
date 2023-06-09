@@ -39,7 +39,15 @@ class ApplRSUIntersection : public ApplRSUCRL
 {
 private:
     typedef ApplRSUCRL super;
+    double Vmax;
+    double Vmin;
+    typedef struct
+    {
+        double refVelocity;
+        int optSize;
+    }CtrlValue;
     void sendPltCtrl(std::string receiverID, std::string receivingPlatoonID, double refSpeed, int optSize); //sendPltCtrl.msg after calculate
+    CtrlValue getCtrlValue(double TG, TraCICoord pos, double speed);
 
 public:
     ~ApplRSUIntersection();

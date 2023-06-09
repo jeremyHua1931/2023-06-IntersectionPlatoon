@@ -2,7 +2,7 @@
 
 <trafficControl id="example_0">
 
-    <speed id="veh" begin="10" value="20" />
+    <speed id="veh" begin="1" value="20" />
 
 
     <!-- <pltLeave pltId="veh" leaveIndex="5" begin="180" leaveDirection="left" />

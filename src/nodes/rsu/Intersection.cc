@@ -43,7 +43,8 @@ void ApplRSUIntersection::initialize(int stage)
 
     if (stage == 0)
     {
-
+        Vmax = par("Vmax").doubleValue();
+        Vmin = par("Vmin").doubleValue();
     }
 }
 
@@ -90,13 +91,157 @@ void ApplRSUIntersection::onDataMsg(dataMsg *wsm)
 // receive PltInfo.msg from leader entering ZONE
 void ApplRSUIntersection::onPltInfo(PltInfo* wsm)
 {
+    LOG_INFO << boost::format("%s receive PltInfo: senderID: %s, receiverID: %s, TG: %.2f, pos_x: %.2f, pos_y: %.2f, speed: %.2f \n")
+                                    %SUMOID.c_str()
+                                    %wsm->getSenderID()
+                                    %wsm->getReceiverID()
+                                    %wsm->getTG()
+                                    %wsm->getPos().x
+                                    %wsm->getPos().y
+                                    %wsm->getSpeed()
+                                << std::flush;
+    if((strcmp(wsm->getReceiverID(), myFullId) == 0))
+    {
+        // collect value from wsm
+        std::string sender = wsm->getSenderID();
+        std::string sendingPlatoonID = wsm->getSendingPlatoonID();
+        double TG = wsm->getTG();
+        TraCICoord pos = wsm->getPos();
+        double speed = wsm->getSpeed();
 
+        // get control value
+        CtrlValue cValue = getCtrlValue(TG, pos, speed);
+
+        // send PltCtrl.msg
+        sendPltCtrl(sender, sendingPlatoonID, cValue.refVelocity, cValue.optSize);
+    }
 }
 
-// send PltCtrl.msg after calculating on PltInfo.msg from leader
+ApplRSUIntersection::CtrlValue ApplRSUIntersection::getCtrlValue(double TG, TraCICoord pos, double speed)
+{
+    double distance = abs(pos.x - (-14.0)); //-14 is from sumo->net.xml file, position of waiting line
+    double threshold;
+
+    // var from TrafficLight
+    enum Stage {
+                GO_STAGE,
+                WAIT_STAGE
+            };
+    Stage currentStage;
+    int nextSwitchTimeMs = TraCI->TLGetNextSwitchTime("2");
+    double nextSwitchTime = nextSwitchTimeMs / 1000;
+    double currentTime = omnetpp::simTime().dbl();
+    double remainingTime = nextSwitchTime - currentTime;
+    double greenDuration = 30.0,
+           redDuration = 30.0,
+           yellowDuration = 6.0; // from from sumo->net.xml file
+    double nextRedTime = 0., //for go_stage optSize
+           nextGreenTime = 0., //for wait_stage v_ref
+           leaderArrivalTime = distance / speed; //for go_stage optSize
+    std::string state = TraCI->TLGetState("2");
+    char nowSignal = state[17];
+    // return value
+    double refVelocity;
+    int optSize;
+
+    if(remainingTime < 0)
+    {
+        throw omnetpp::cRuntimeError("TrafficLight next switch time wrong!");
+    }
+
+    // determine stage
+    if(nowSignal == 'G') // now green
+    {
+        threshold = distance / ApplRSUIntersection::Vmin;
+        if(remainingTime > threshold)
+        {
+            currentStage = GO_STAGE;
+            nextRedTime = remainingTime;
+        }
+        else
+        {
+            currentStage = WAIT_STAGE;
+            nextGreenTime = remainingTime + redDuration;
+        }
+    }
+    else if(nowSignal == 'r')   // now red
+    {
+        threshold = distance / ApplRSUIntersection::Vmax;
+        if(remainingTime > threshold)
+        {
+            currentStage = WAIT_STAGE;
+            nextGreenTime = remainingTime;
+        }
+        else
+        {
+            currentStage = GO_STAGE;
+            nextRedTime = remainingTime + greenDuration;
+        }
+    }
+    else // now yellow
+    {
+        currentStage = WAIT_STAGE;
+        nextGreenTime = remainingTime + greenDuration; // remainingTime means t_green
+    }
+
+    // calculate ref_speed/opt_size for different stage
+    switch(currentStage)
+    {
+        case GO_STAGE:
+            refVelocity = ApplRSUIntersection::Vmax;
+            optSize = floor((nextRedTime - leaderArrivalTime) / TG) + 1;
+            break;
+        case WAIT_STAGE:
+            refVelocity = distance / nextGreenTime;
+            optSize = floor(greenDuration / TG) + 1;
+            break;
+    }
+
+    LOG_INFO << boost::format(" distance: %.2f\n nowSignal: %s\n remainingTime: %.2f\n threshold: %.2f\n currentStage: %d\n "
+            "nextGreenTime: %.2f\n nextRedTime: %.2f\n leaderArrivalTime: %.2f\n refVelocity: %.2f\n optSize:%.2f\n")
+                                %distance
+                                %nowSignal
+                                %remainingTime
+                                %threshold
+                                %currentStage
+                                %nextGreenTime
+                                %nextRedTime
+                                %leaderArrivalTime
+                                %refVelocity
+                                %optSize
+                                << std::flush;
+
+    ApplRSUIntersection::CtrlValue cValue;
+    cValue.refVelocity = refVelocity;
+    cValue.optSize = optSize;
+    return cValue;
+}
+
+// send PltCtrl.msg
 void ApplRSUIntersection::sendPltCtrl(std::string receiverID, std::string receivingPlatoonID, double refSpeed, int optSize)
 {
+    PltCtrl* wsm = new PltCtrl("pltCtrl", TYPE_PLATOON_CONTROL);
 
+    wsm->setWsmVersion(1);
+    wsm->setSecurityType(1);
+    wsm->setChannelNumber(Veins::Channels::CCH);
+    wsm->setDataRate(1);
+    wsm->setPriority(dataPriority);
+    wsm->setPsid(0);
+
+    wsm->setSenderID(SUMOID.c_str());
+    wsm->setReceiverID(receiverID.c_str());
+    wsm->setReceivingPlatoonID(receivingPlatoonID.c_str());
+    wsm->setRefSpeed(refSpeed);
+    wsm->setOptSize(optSize);
+
+    // add header length
+    wsm->addBitLength(headerLength);
+
+    // add payload length
+    wsm->addBitLength(dataLengthBits);
+
+    send(wsm, lowerLayerOut);
 }
 
 }

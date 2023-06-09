@@ -25,7 +25,7 @@ namespace VENTOS;
 packet PltInfo extends WaveShortMessage
 {
 	string  senderID;
-	string  receiverID;
+	string  receiverID; // myFullId instead of SUMOID
 	string  sendingPlatoonID;
     double TG = -1;  	// hw_preset
     TraCICoord pos;     // current position

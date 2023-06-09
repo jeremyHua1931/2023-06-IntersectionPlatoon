@@ -242,33 +242,20 @@ void ApplVPlatoonMg::onBeaconRSU(BeaconRSU* wsm)
         if(!haveSendPltInfo)
         {
             // collect info
-            std::string senderRSU = wsm->getSender();
+            const char * sender = wsm->getSender();
             TraCICoord pos = TraCI->vehicleGetPosition(SUMOID);
             double speed = TraCI->vehicleGetSpeed(SUMOID);
-            LOG_INFO << boost::format("%s send PltInfo: ReceiverID: %s, TG: %.2f, pos_x: %.2f, pos_y: %.2f, speed: %.2f \n")
+            LOG_INFO << boost::format("%s send PltInfo: receiverID: %s, TG: %.2f, pos_x: %.2f, pos_y: %.2f, speed: %.2f \n")
                         %SUMOID.c_str()
-                        %senderRSU
+                        %sender
                         %TG
                         %pos.x
                         %pos.y
                         %speed
                     << std::flush;
-
-            for (auto& member : plnMembersList) {
-                double memberTG = TraCI->vehicleGetTimeGap(member.c_str());
-                LOG_INFO << boost::format("%s TG: %.2f\n") %member.c_str() %memberTG << std::flush;
-                }
-
-            std::vector<std::string> tlList = TraCI->TLGetIDList();
-            for (std::size_t i = 0; i < tlList.size(); ++i)
-            {
-                LOG_INFO << boost::format("%s\n") %tlList[i] << std::flush;
-            }
-            int t = TraCI->TLGetNextSwitchTime("2");
-            LOG_INFO << boost::format("%d\n") %t << std::flush;
-
             // call sendPltInfo
-            sendPltInfo(senderRSU, TG, pos, speed);
+            // use TG instead of TraCI->vehicleGetTimeGap()(TP for leader)
+            sendPltInfo(sender, TG, pos, speed);
             haveSendPltInfo = true;
         }
     }
@@ -289,6 +276,29 @@ void ApplVPlatoonMg::onPlatoonMsg(PlatoonMsg* wsm)
     }
 }
 
+void ApplVPlatoonMg::onPltInfo(PltInfo* wsm)
+{
+    // ignore
+}
+
+// leader receives the PltCtrl by RSU
+// then change speed to ref_v and change optSize
+void ApplVPlatoonMg::onPltCtrl(PltCtrl* wsm)
+{
+    std::string receiverID = wsm->getReceiverID();
+    std::string receivingPlatoonID = wsm->getReceivingPlatoonID();
+    if(vehicleState == state_platoonLeader && SUMOID == receiverID && myPlnID == receivingPlatoonID)
+    {
+        optPlnSize = wsm->getOptSize();
+//        splitFromPlatoon(optPlnSize);
+        LOG_INFO << boost::format("%s receive PltCtrl\n optPlnSize: %d\n refSpeed: %.2f\n")
+                                %SUMOID
+                                %optPlnSize
+                                %wsm->getRefSpeed()
+                                << std::flush;
+        TraCI->vehicleSetSpeed(SUMOID, wsm->getRefSpeed());
+    }
+}
 
 void ApplVPlatoonMg::sendPltData(std::string receiverID, uCommand_t msgType, std::string receivingPlatoonID, value_t value)
 {
@@ -339,14 +349,32 @@ void ApplVPlatoonMg::sendPltData(std::string receiverID, uCommand_t msgType, std
 // called by onBeaconRSU
 void ApplVPlatoonMg::sendPltInfo(std::string receiverID, double TG, TraCICoord pos, double speed)
 {
+    if(plnMode != platoonManagement)
+        throw omnetpp::cRuntimeError("This application mode does not support platoon management!");
 
-}
+    PltInfo* wsm = new PltInfo("pltInfo", TYPE_PLATOON_INFO);
 
-// leader receives the PltCtrl by RSU
-// then change speed to ref_v and change optSize
-void ApplVPlatoonMg::onPltCtrl(PltCtrl* wsm)
-{
+    wsm->setWsmVersion(1);
+    wsm->setSecurityType(1);
+    wsm->setChannelNumber(Veins::Channels::CCH);
+    wsm->setDataRate(1);
+    wsm->setPriority(dataPriority);
+    wsm->setPsid(0);
 
+    wsm->setSenderID(SUMOID.c_str());
+    wsm->setReceiverID(receiverID.c_str());
+    wsm->setSendingPlatoonID(myPlnID.c_str());
+    wsm->setTG(TG);
+    wsm->setPos(pos);
+    wsm->setSpeed(speed);
+
+    // add header length
+    wsm->addBitLength(headerLength);
+
+    // add payload length
+    wsm->addBitLength(dataLengthBits);
+
+    sendDelayed(wsm, uniform(0,SEND_DELAY_OFFSET), lowerLayerOut);
 }
 
 // change the blue color of the follower to show depth
@@ -1179,6 +1207,7 @@ void ApplVPlatoonMg::pltSplitMonitor()
 
         if(!busy && splitEnabled && plnSize > optPlnSize)
         {
+            LOG_INFO << boost::format("platoon %s is splitting from %d\n") %SUMOID %optPlnSize << std::flush;
             splittingDepth = optPlnSize;
             splittingVehicle = plnMembersList[splittingDepth];
             splitCaller = -1;

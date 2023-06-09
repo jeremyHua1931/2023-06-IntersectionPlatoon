@@ -203,6 +203,17 @@ void ApplVManager::onMessageType(omnetpp::cMessage* msg)
 
         onDataMsg(wsm);
     }
+    else if(msg->getKind() == TYPE_PLATOON_INFO)
+    {
+       // ignore
+    }
+    else if(msg->getKind() == TYPE_PLATOON_CONTROL)
+    {
+        PltCtrl* wsm = dynamic_cast<PltCtrl*>(msg);
+        ASSERT(wsm);
+
+        onPltCtrl(wsm);
+    }
     // todo
     else if(msg->getKind() == TYPE_CRL_PIECE)
     {
