@@ -245,17 +245,20 @@ void ApplVPlatoonMg::onBeaconRSU(BeaconRSU* wsm)
             const char * sender = wsm->getSender();
             TraCICoord pos = TraCI->vehicleGetPosition(SUMOID);
             double speed = TraCI->vehicleGetSpeed(SUMOID);
-            LOG_INFO << boost::format("%s send PltInfo: receiverID: %s, TG: %.2f, pos_x: %.2f, pos_y: %.2f, speed: %.2f \n")
+            double maxAccel = TraCI->vehicleGetMaxAccel(SUMOID);
+            double maxDecel = TraCI->vehicleGetMaxDecel(SUMOID);
+            LOG_INFO << boost::format("%s send PltInfo: receiverID: %s, TG: %.2f, pos_x: %.2f, pos_y: %.2f, speed: %.2f, maxAcc: %.2f \n")
                         %SUMOID.c_str()
                         %sender
                         %TG
                         %pos.x
                         %pos.y
                         %speed
+                        %maxAccel
                     << std::flush;
             // call sendPltInfo
             // use TG instead of TraCI->vehicleGetTimeGap()(TP for leader)
-            sendPltInfo(sender, TG, pos, speed);
+            sendPltInfo(sender, TG, pos, speed, maxAccel, maxDecel);
             haveSendPltInfo = true;
         }
     }
@@ -290,7 +293,6 @@ void ApplVPlatoonMg::onPltCtrl(PltCtrl* wsm)
     if(vehicleState == state_platoonLeader && SUMOID == receiverID && myPlnID == receivingPlatoonID)
     {
         optPlnSize = wsm->getOptSize();
-//        splitFromPlatoon(optPlnSize);
         LOG_INFO << boost::format("%s receive PltCtrl\n optPlnSize: %d\n refSpeed: %.2f\n")
                                 %SUMOID
                                 %optPlnSize
@@ -347,7 +349,7 @@ void ApplVPlatoonMg::sendPltData(std::string receiverID, uCommand_t msgType, std
 
 // leader enters the intersection ZONE, receive RSUBeacon, send PltInfo
 // called by onBeaconRSU
-void ApplVPlatoonMg::sendPltInfo(std::string receiverID, double TG, TraCICoord pos, double speed)
+void ApplVPlatoonMg::sendPltInfo(std::string receiverID, double TG, TraCICoord pos, double speed, double maxAccel, double maxDecel)
 {
     if(plnMode != platoonManagement)
         throw omnetpp::cRuntimeError("This application mode does not support platoon management!");
@@ -367,6 +369,8 @@ void ApplVPlatoonMg::sendPltInfo(std::string receiverID, double TG, TraCICoord p
     wsm->setTG(TG);
     wsm->setPos(pos);
     wsm->setSpeed(speed);
+    wsm->setMaxAccel(maxAccel);
+    wsm->setMaxDecel(maxDecel);
 
     // add header length
     wsm->addBitLength(headerLength);

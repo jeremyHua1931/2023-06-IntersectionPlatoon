@@ -306,7 +306,7 @@ protected:
 
 private:
     void sendPltData(std::string, uCommand_t, std::string, value_t value = value_t());
-    void sendPltInfo(std::string receiverID, double TG, TraCICoord pos, double speed); // leader send PltInfo.msg
+    void sendPltInfo(std::string receiverID, double TG, TraCICoord pos, double speed, double maxAccel, double maxDecel ); // leader send PltInfo.msg
     void updateColorDepth();
     void setVehicleState(states_num_t vehState, std::string maneuver = "");
 

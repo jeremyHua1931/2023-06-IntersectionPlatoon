@@ -30,4 +30,6 @@ packet PltInfo extends WaveShortMessage
     double TG = -1;  	// hw_preset
     TraCICoord pos;     // current position
     double speed;       // current speed
+    double maxAccel;    // max acceleration
+    double maxDecel;    // max decceleration
 };

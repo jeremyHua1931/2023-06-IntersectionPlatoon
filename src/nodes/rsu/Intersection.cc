@@ -108,16 +108,18 @@ void ApplRSUIntersection::onPltInfo(PltInfo* wsm)
         double TG = wsm->getTG();
         TraCICoord pos = wsm->getPos();
         double speed = wsm->getSpeed();
+        double maxAccel = wsm->getMaxAccel();
+        double maxDecel = wsm->getMaxDecel();
 
         // get control value
-        CtrlValue cValue = getCtrlValue(TG, pos, speed);
+        CtrlValue cValue = getCtrlValue(TG, pos, speed, maxAccel, maxDecel);
 
         // send PltCtrl.msg
         sendPltCtrl(sender, sendingPlatoonID, cValue.refVelocity, cValue.optSize);
     }
 }
 
-ApplRSUIntersection::CtrlValue ApplRSUIntersection::getCtrlValue(double TG, TraCICoord pos, double speed)
+ApplRSUIntersection::CtrlValue ApplRSUIntersection::getCtrlValue(double TG, TraCICoord pos, double speed, double maxAccel, double maxDecel)
 {
     double distance = abs(pos.x - (-14.0)); //-14 is from sumo->net.xml file, position of waiting line
     double threshold;
@@ -137,7 +139,8 @@ ApplRSUIntersection::CtrlValue ApplRSUIntersection::getCtrlValue(double TG, TraC
            yellowDuration = 6.0; // from from sumo->net.xml file
     double nextRedTime = 0., //for go_stage optSize
            nextGreenTime = 0., //for wait_stage v_ref
-           leaderArrivalTime = distance / speed; //for go_stage optSize
+           leaderArrivalTime; //for go_stage optSize
+    double adjAccel = maxAccel / 4; //do not use maxAccel for optSize, in case LAT less than real
     std::string state = TraCI->TLGetState("2");
     char nowSignal = state[17];
     // return value
@@ -152,7 +155,7 @@ ApplRSUIntersection::CtrlValue ApplRSUIntersection::getCtrlValue(double TG, TraC
     // determine stage
     if(nowSignal == 'G') // now green
     {
-        threshold = distance / ApplRSUIntersection::Vmin;
+        threshold = distance / speed;
         if(remainingTime > threshold)
         {
             currentStage = GO_STAGE;
@@ -188,6 +191,20 @@ ApplRSUIntersection::CtrlValue ApplRSUIntersection::getCtrlValue(double TG, TraC
     switch(currentStage)
     {
         case GO_STAGE:
+            if(((ApplRSUIntersection::Vmax * ApplRSUIntersection::Vmax - speed * speed) / 2 * adjAccel) >= distance)
+            {
+                leaderArrivalTime = (std::sqrt(2 * adjAccel * distance + speed * speed) - speed) / adjAccel;
+                std::cout << "xiao " <<leaderArrivalTime << std::endl;
+            }
+            else
+            {
+                double t1 = (ApplRSUIntersection::Vmax - speed) / adjAccel,
+                       d2 = distance - ((ApplRSUIntersection::Vmax * ApplRSUIntersection::Vmax - speed * speed) / (2 * adjAccel)),
+                       t2 = d2 / ApplRSUIntersection::Vmax;
+                leaderArrivalTime = t1 + t2;
+//                std::cout <<leaderArrivalTime << " " << t1 << " " << d2 << " " << t2 << " " << ApplRSUIntersection::Vmax << std::endl;
+            }
+
             refVelocity = ApplRSUIntersection::Vmax;
             optSize = floor((nextRedTime - leaderArrivalTime) / TG) + 1;
             break;
