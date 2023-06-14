@@ -105,6 +105,62 @@ private:
     omnetpp::cMessage* plnTIMER12 = NULL;
     std::string lastVeh = "";
 
+    typedef enum uCommand
+    {
+        MERGE_REQ,
+        MERGE_ACCEPT,
+        MERGE_REJECT,
+        MERGE_DONE,
+
+        SPLIT_REQ,
+        SPLIT_ACCEPT,
+        SPLIT_REJECT,
+        SPLIT_DONE,
+
+        CHANGE_PL,
+        CHANGE_Tg,
+
+        VOTE_LEADER,
+        ELECTED_LEADER,
+        DISSOLVE,
+
+        LEAVE_REQ,
+        LEAVE_ACCEPT,
+        LEAVE_REJECT,
+        GAP_CREATED,
+
+        ACK,
+    } uCommand_t;
+
+    const std::map<uCommand_t, std::string> uCommandMap = {
+
+            {MERGE_REQ, "MERGE_REQ"},
+            {MERGE_ACCEPT, "MERGE_ACCEPT"},
+            {MERGE_REJECT, "MERGE_REJECT"},
+            {MERGE_DONE, "MERGE_DONE"},
+
+            {SPLIT_REQ, "SPLIT_REQ"},
+            {SPLIT_ACCEPT, "SPLIT_ACCEPT"},
+            {SPLIT_REJECT, "SPLIT_REJECT"},
+            {SPLIT_DONE, "SPLIT_DONE"},
+
+            {CHANGE_PL, "CHANGE_PL"},
+            {CHANGE_Tg, "CHANGE_Tg"},
+
+            {VOTE_LEADER, "VOTE_LEADER"},
+            {ELECTED_LEADER, "ELECTED_LEADER"},
+            {DISSOLVE, "DISSOLVE"},
+
+            {LEAVE_REQ, "LEAVE_REQ"},
+            {LEAVE_ACCEPT, "LEAVE_ACCEPT"},
+            {LEAVE_REJECT, "LEAVE_REJECT"},
+            {GAP_CREATED, "GAP_CREATED"},
+
+            {ACK, "ACK"}
+    };
+
+
+protected:
     typedef enum states_num
     {
         state_idle,             // 0
@@ -212,59 +268,6 @@ private:
             {state_waitForBeacon, "state_waitForBeacon"}
     };
 
-    typedef enum uCommand
-    {
-        MERGE_REQ,
-        MERGE_ACCEPT,
-        MERGE_REJECT,
-        MERGE_DONE,
-
-        SPLIT_REQ,
-        SPLIT_ACCEPT,
-        SPLIT_REJECT,
-        SPLIT_DONE,
-
-        CHANGE_PL,
-        CHANGE_Tg,
-
-        VOTE_LEADER,
-        ELECTED_LEADER,
-        DISSOLVE,
-
-        LEAVE_REQ,
-        LEAVE_ACCEPT,
-        LEAVE_REJECT,
-        GAP_CREATED,
-
-        ACK,
-    } uCommand_t;
-
-    const std::map<uCommand_t, std::string> uCommandMap = {
-
-            {MERGE_REQ, "MERGE_REQ"},
-            {MERGE_ACCEPT, "MERGE_ACCEPT"},
-            {MERGE_REJECT, "MERGE_REJECT"},
-            {MERGE_DONE, "MERGE_DONE"},
-
-            {SPLIT_REQ, "SPLIT_REQ"},
-            {SPLIT_ACCEPT, "SPLIT_ACCEPT"},
-            {SPLIT_REJECT, "SPLIT_REJECT"},
-            {SPLIT_DONE, "SPLIT_DONE"},
-
-            {CHANGE_PL, "CHANGE_PL"},
-            {CHANGE_Tg, "CHANGE_Tg"},
-
-            {VOTE_LEADER, "VOTE_LEADER"},
-            {ELECTED_LEADER, "ELECTED_LEADER"},
-            {DISSOLVE, "DISSOLVE"},
-
-            {LEAVE_REQ, "LEAVE_REQ"},
-            {LEAVE_ACCEPT, "LEAVE_ACCEPT"},
-            {LEAVE_REJECT, "LEAVE_REJECT"},
-            {GAP_CREATED, "GAP_CREATED"},
-
-            {ACK, "ACK"}
-    };
 
 public:
     ~ApplVPlatoonMg();

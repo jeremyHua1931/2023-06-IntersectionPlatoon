@@ -28,17 +28,18 @@
 #ifndef ApplVMANAGER_H
 #define ApplVMANAGER_H
 
-#include "nodes/vehicle/yourCode.h"
+#include "KeyManage.h"
+//#include "05_PlatoonMg.h"
 
 namespace VENTOS {
 
-class ApplVManager : public ApplVYourCode
+class ApplVManager : public ApplVKeyManage
 {
 public:
     bool jamming = false;
 
 private:
-    typedef ApplVYourCode super;
+    typedef ApplVKeyManage super;
 
     // NED variables (packet loss ratio)
     double dropStartTime;

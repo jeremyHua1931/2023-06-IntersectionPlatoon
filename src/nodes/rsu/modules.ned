@@ -128,8 +128,13 @@ simple ApplRSUIntersection extends ApplRSUCRL
         double Vmin = default(10);
 }
 
+simple ApplRSUGKM extends ApplRSUIntersection
+{
+    parameters:
+        @class(VENTOS::ApplRSUGKM);
+}
 
-simple ApplRSUManager extends ApplRSUIntersection
+simple ApplRSUManager extends ApplRSUGKM
 {
     parameters:
         @class(VENTOS::ApplRSUManager);

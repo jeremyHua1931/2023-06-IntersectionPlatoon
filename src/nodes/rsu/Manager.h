@@ -28,14 +28,14 @@
 #ifndef APPLRSUMANAGER_H_
 #define APPLRSUMANAGER_H_
 
-#include "Intersection.h"
+#include "GKM.h"
 
 namespace VENTOS {
 
-class ApplRSUManager : public ApplRSUIntersection
+class ApplRSUManager : public ApplRSUGKM
 {
 private:
-    typedef ApplRSUIntersection super;
+    typedef ApplRSUGKM super;
 
     omnetpp::simsignal_t Signal_executeEachTS;
 

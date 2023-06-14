@@ -134,18 +134,15 @@ simple ApplVPlatoonMg extends ApplVPlatoon
 }
 
 
-simple ApplVYourCode extends ApplVPlatoonMg
+simple ApplVKeyManage extends ApplVPlatoonMg
 {
     parameters:
-        @class(VENTOS::ApplVYourCode);
-        @display("i=block/app2");
-        
-        bool sendingData = default(false);
-        bool printCtrlData = default(false);
+        @class(VENTOS::ApplVKeyManage);
+        bool grouKeyEnabled = default(false);
 }
 
 
-simple ApplVManager extends ApplVYourCode
+simple ApplVManager extends ApplVKeyManage
 {
     parameters:
         @class(VENTOS::ApplVManager);

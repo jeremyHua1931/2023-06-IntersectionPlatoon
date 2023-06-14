@@ -196,13 +196,6 @@ void ApplVManager::onMessageType(omnetpp::cMessage* msg)
 
         delete msg;
     }
-    else if(msg->getKind() == TYPE_GENERIC_DATA)
-    {
-        dataMsg* wsm = dynamic_cast<dataMsg*>(msg);
-        ASSERT(wsm);
-
-        onDataMsg(wsm);
-    }
     else if(msg->getKind() == TYPE_PLATOON_INFO)
     {
        // ignore
@@ -214,6 +207,13 @@ void ApplVManager::onMessageType(omnetpp::cMessage* msg)
 
         onPltCtrl(wsm);
     }
+//    else if(msg->getKind() == TYPE_KEY_MESSAGE)
+//    {
+//        KeyMsg* wsm = dynamic_cast<KeyMsg*>(msg);
+//        ASSERT(wsm);
+//
+//        onKeyMsg(wsm);
+//    }
     // todo
     else if(msg->getKind() == TYPE_CRL_PIECE)
     {
