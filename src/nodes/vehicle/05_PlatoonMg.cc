@@ -78,6 +78,10 @@ void ApplVPlatoonMg::initialize(int stage)
         if(!DSRCenabled)
             throw omnetpp::cRuntimeError("This vehicle is not DSRC-enabled!");
 
+        // register memberChangeSignal
+        memberChangeSignal = registerSignal("memberChangeSignal");
+        newLeaderSignal = registerSignal("newLeaderSignal");
+
         // I am the platoon leader
         if(myPlnDepth == 0)
         {
@@ -1124,6 +1128,11 @@ void ApplVPlatoonMg::merge_DataFSM(PlatoonMsg* wsm)
         plnSize = plnSize + secondPlnMembersList.size();
         plnMembersList.insert(plnMembersList.end(), secondPlnMembersList.begin(), secondPlnMembersList.end());
 
+        // emit memberChangeSignal
+        StringPacket *packet = new StringPacket();
+        packet->setString(SUMOID);
+        emit(memberChangeSignal, packet);
+
         if( adaptiveTG && plnSize > (maxPlnSize / 2) )
         {
             // increase Tg
@@ -1373,6 +1382,11 @@ void ApplVPlatoonMg::split_DataFSM(PlatoonMsg *wsm)
         plnSize = splittingDepth;
         plnMembersList.pop_back();
 
+        //emit memberChangeSignal
+        StringPacket *packet = new StringPacket();
+        packet->setString(SUMOID);
+        emit(memberChangeSignal, packet);
+
         // optimal platoon size is equal to current platoon size
         if(manualSplit)
             optPlnSize = plnSize;
@@ -1523,8 +1537,12 @@ void ApplVPlatoonMg::split_DataFSM(PlatoonMsg *wsm)
 
             plnMembersList.clear();
             plnMembersList = wsm->getValue().myNewPltMembers;
-
             plnSize = plnMembersList.size();
+
+            // emit newLeaderSignal
+            StringPacket *packet = new StringPacket();
+            packet->setString(SUMOID);
+            emit(newLeaderSignal, packet);
 
             if(wsm->getValue().manualSplit)
                 optPlnSize = plnSize;

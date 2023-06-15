@@ -31,6 +31,7 @@
 #include "nodes/vehicle/04_Platoon.h"
 #include "msg/PltInfo_m.h"
 #include "msg/PltCtrl_m.h"
+#include "StringPacket.h"
 
 namespace VENTOS {
 
@@ -55,7 +56,6 @@ private:
     typedef ApplVPlatoon super;
 
     bool busy = false;
-
     bool haveSendPltInfo = false; // leader only send once when entering ZONE
 
     // --[ entry ]--
@@ -268,6 +268,10 @@ protected:
             {state_waitForBeacon, "state_waitForBeacon"}
     };
 
+public:
+    // signal for key management
+    omnetpp::simsignal_t newLeaderSignal;
+    omnetpp::simsignal_t memberChangeSignal;
 
 public:
     ~ApplVPlatoonMg();

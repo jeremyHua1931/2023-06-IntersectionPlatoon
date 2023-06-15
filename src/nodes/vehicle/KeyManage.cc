@@ -10,8 +10,7 @@
 #include "baseAppl/ApplToPhyControlInfo.h"
 #include "MIXIM_veins/nic/phy/PhyToMacControlInfo.h"
 #include "MIXIM_veins/nic/phy/decider/DeciderResult80211.h"
-#include <openssl/evp.h>
-#include <openssl/rand.h>
+
 
 namespace VENTOS {
 
@@ -33,14 +32,20 @@ void ApplVKeyManage::initialize(int stage)
     {
         grouKeyEnabled = par("grouKeyEnabled").boolValue();
 
+        // subscribe memberChangeSignal
+        getSimulation()->getSystemModule()->subscribe("memberChangeSignal", this);
+        getSimulation()->getSystemModule()->subscribe("newLeaderSignal", this);
+
         OpenSSL_add_all_algorithms();
 
         // if i am leader, play GKM
+        // generate sm2 key, send
         if(myPlnDepth == 0)
         {
-            generateSM4Key(sm4Key);
-            value_k value;
-            sendKeyMsg("multicast", ENCRYPT_KEY, myPlnID, value);
+            if(generateSM4Key(sm4Key))
+            {
+                sendKeyMsg("multicast", CERT_REQ, myPlnID);
+            }
         }
     }
 }
@@ -49,6 +54,16 @@ void ApplVKeyManage::initialize(int stage)
 void ApplVKeyManage::finish()
 {
     super::finish();
+
+    // unsubscribe memberChangeSignal
+    if(getSimulation()->getSystemModule()->isSubscribed("memberChangeSignal", this))
+    {
+        getSimulation()->getSystemModule()->unsubscribe("memberChangeSignal", this);
+    }
+    if(getSimulation()->getSystemModule()->isSubscribed("newLeaderSignal", this))
+    {
+        getSimulation()->getSystemModule()->unsubscribe("newLeaderSignal", this);
+    }
 }
 
 
@@ -65,6 +80,35 @@ void ApplVKeyManage::onBeaconVehicle(BeaconVehicle* wsm)
 
 }
 
+void ApplVKeyManage::receiveSignal(omnetpp::cComponent *source, omnetpp::simsignal_t signalID, omnetpp::cObject *obj, omnetpp::cObject *details)
+{
+    StringPacket *packet = dynamic_cast<StringPacket *>(obj);
+    std::string senderSUMOID;
+    if (packet != nullptr)
+        senderSUMOID = packet->getString();
+    else
+        throw omnetpp::cRuntimeError("Wrong signal value");
+
+    if(signalID == memberChangeSignal && senderSUMOID == SUMOID)
+    {
+        LOG_WARNING << boost::format("%s: front leader change key...\n")
+                % SUMOID << std::flush;
+        if(generateSM4Key(sm4Key))
+        {
+            sendKeyMsg("multicast", CERT_REQ, myPlnID);
+        }
+    }
+    else if(signalID == newLeaderSignal && senderSUMOID == SUMOID)
+    {
+        LOG_WARNING << boost::format("%s: back leader generate key...\n")
+                        % SUMOID << std::flush;
+        if(generateSM4Key(sm4Key))
+        {
+            sendKeyMsg("multicast", CERT_REQ, myPlnID);
+        }
+    }
+}
+
 
 void ApplVKeyManage::onBeaconRSU(BeaconRSU* wsm)
 {
@@ -75,96 +119,54 @@ void ApplVKeyManage::onBeaconRSU(BeaconRSU* wsm)
 
 void ApplVKeyManage::onKeyMsg(KeyMsg *wsm)
 {
+    /* followers, send CERT_MSG to leader */
     if(wsm->getUCommandType() == CERT_REQ && wsm->getSenderID() == myPlnID)
     {
-        // followers, send CERT_MSG to GKM
+        BIO* bio = BIO_new(BIO_s_file());
+        std::string directory = "../../../examples/intersectionPlatoon/crypto/";
+        std::string folder = SUMOID;
+        std::string fullPath = directory + folder + "/cert.pem";
+        std::string certificateStr = ReadCertificateToString(fullPath);
+
+        value_k value;
+        value.cert = certificateStr;
+        sendKeyMsg(SUMOID, CERT_MSG, myPlnID, value);
     }
 
-    if(wsm->getUCommandType() == ENCRYPT_KEY && wsm->getReceivingPlatoonID() == myPlnID) //multicast from leaderGKM
+    /* leader receive certificate from followers, 1.verify it and 2.use pub key to encrypt sm4 key*/
+    if(wsm->getUCommandType() == CERT_MSG && wsm->getReceiverID == SUMOID)
     {
-        // TTTEST
-        /*   encrypt   */
-        generateSM4Key(sm4Key);
+        std::string certificateStr = wsm->getValue().cert;
+        std::string sender = wsm->getSenderID();
+        std::string caCertFilePath = "../../../examples/intersectionPlatoon/crypto/GKM/ca_cert.pem";
 
-        // The message to be encrypted
-        const char* plaintext = "this is a message";
-
-        // Create and initialize the context for encryption
-        EVP_CIPHER_CTX* ctx_enc = EVP_CIPHER_CTX_new();
-        if(!ctx_enc) {
-            std::cerr << "Failed to create the context for encryption" << std::endl;
-            return ;
+        bool isCertValid  = verifyCert(certificateStr, caCertFilePath);
+        if(isCertValid)
+        {
+            std::string encryptKey = encryptSM4Key(certificateStr);
+            value_k value;
+            value.encryptSM4Key = encryptKey;
+            sendKeyMsg(sender, ENCRYPT_KEY, myPlnID, value);
         }
-
-        // Initialize the encryption operation
-        if(EVP_EncryptInit_ex(ctx_enc, EVP_sm4_ecb(), NULL, sm4Key, NULL) != 1) {
-            std::cerr << "Failed to initialize the encryption operation" << std::endl;
-            return ;
-        }
-
-        // Provide the plaintext to be encrypted
-        int plaintext_len = strlen(plaintext);
-        int ciphertext_len;
-        unsigned char ciphertext[64];  // make sure it is large enough
-        if(EVP_EncryptUpdate(ctx_enc, ciphertext, &ciphertext_len, (unsigned char*)plaintext, plaintext_len) != 1) {
-            std::cerr << "Failed to encrypt the plaintext" << std::endl;
-            return ;
-        }
-
-        // Finalize the encryption
-        int len;
-        if(EVP_EncryptFinal_ex(ctx_enc, ciphertext + ciphertext_len, &len) != 1) {
-            std::cerr << "Failed to finalize the encryption" << std::endl;
-            return ;
-        }
-        ciphertext_len += len;
-
-        // Clean up encryption context
-        EVP_CIPHER_CTX_free(ctx_enc);
-
-        // Create and initialize the context for decryption
-        EVP_CIPHER_CTX* ctx_dec = EVP_CIPHER_CTX_new();
-        if(!ctx_dec) {
-            std::cerr << "Failed to create the context for decryption" << std::endl;
-            return ;
-        }
-
-        // Initialize the decryption operation
-        if(EVP_DecryptInit_ex(ctx_dec, EVP_sm4_ecb(), NULL, sm4Key, NULL) != 1) {
-            std::cerr << "Failed to initialize the decryption operation" << std::endl;
-            return ;
-        }
-
-        // Provide the ciphertext to be decrypted
-        unsigned char decrypted[64];  // make sure it is large enough
-        int decrypted_len;
-        if(EVP_DecryptUpdate(ctx_dec, decrypted, &decrypted_len, ciphertext, ciphertext_len) != 1) {
-            std::cerr << "Failed to decrypt the ciphertext" << std::endl;
-            return;
-        }
-
-        // Finalize the decryption
-        if(EVP_DecryptFinal_ex(ctx_dec, decrypted + decrypted_len, &len) != 1) {
-            std::cerr << "Failed to finalize the decryption" << std::endl;
-            return ;
-        }
-        decrypted_len += len;
-
-        // Clean up decryption context
-        EVP_CIPHER_CTX_free(ctx_dec);
-
-        // Null-terminate the decrypted text
-        decrypted[decrypted_len] = '\0';
-
-        // Print the decrypted text
-        std::cout << "Decrypted text: " << decrypted << std::endl;
-
     }
+
+    /* follower receive encrypt key, decrypt and use it to communicate*/
+    if(wsm->getUCommandType() == ENCRYPT_KEY && wsm->getReceiverID() == SUMOID) //multicast from leaderGKM
+    {
+        std::string ciphertext = wsm->getValue().encryptSM4Key;
+        std::string privateKeyPath = "../../../examples/intersectionPlatoon/crypto/" + SUMOID + "/private_key.pem";
+        decryptSM4Key(privateKeyPath, ciphertext);
+
+        std::string sm4KeyString = byteArrayToHexString(sm4Key, SM4_KEY_LENGTH);
+        LOG_INFO << boost::format("%s SM4 key: %s\n")% SUMOID % sm4KeyString << std::flush;
+    }
+
     if(wsm->getUCommandType() == KEY_DELETE && wsm->getSenderID() == myPlnID) //multicast from leaderleaderGKM
     {
         // followers, delete key
         // ...
     }
+
     if(wsm->getUCommandType() == DEL_ACK && wsm->getReceiverID() == SUMOID) //unicast for from followers
     {
         // leader, send REV_REQ to GKM
@@ -202,23 +204,181 @@ void ApplVKeyManage::sendKeyMsg(std::string receiverID, uCommand_k msgType, std:
 }
 
 
-std::string ApplVKeyManage::pem2string(std::string path)
+bool ApplVKeyManage::generateSM4Key(unsigned char* key)
 {
-    std::ifstream pemFile(path);
-    if (!pemFile) {
-        throw std::runtime_error("Could not open pem file at " + path);
+    if(RAND_bytes(key, SM4_KEY_LENGTH) != 1)
+    {
+        throw omnetpp::cRuntimeError("SM4 key generation error");
+        return false;
     }
-    std::string pemStr((std::istreambuf_iterator<char>(pemFile)),
-                        std::istreambuf_iterator<char>());
-    return pemStr;
+    return true;
 }
 
-void ApplVKeyManage::generateSM4Key(unsigned char* key)
+
+std::string ApplVKeyManage::ReadCertificateToString(const std::string &filepath)
 {
-    if (RAND_bytes(key, 16) != 1) {
-        std::cerr << "Error generating random SM4 key" << std::endl;
-        exit(EXIT_FAILURE);
+    BIO *bio = BIO_new(BIO_s_file());
+    if (BIO_read_filename(bio, filepath.c_str()) <= 0) {
+        BIO_free(bio);
+        throw omnetpp::cRuntimeError("Error in reading file");
     }
+
+    X509 *cert = PEM_read_bio_X509(bio, NULL, 0, NULL);
+    if (cert == NULL) {
+        BIO_free(bio);
+        throw omnetpp::cRuntimeError("Error in reading x509");
+    }
+
+    BIO *mem = BIO_new(BIO_s_mem());
+    PEM_write_bio_X509(mem, cert);
+
+    char *dataStart = NULL;
+    long dataLen = BIO_get_mem_data(mem, &dataStart);
+
+    std::string result(dataStart, dataLen);
+
+    X509_free(cert);
+    BIO_free(bio);
+    BIO_free(mem);
+
+    return result;
+}
+
+bool ApplVKeyManage::verifyCert(const std::string &certString, const std::string &caCertFilePath)
+{
+    // Load CA certificate
+    FILE *fp = fopen(caCertFilePath.c_str(), "r");
+    if (!fp) {
+        throw omnetpp::cRuntimeError("Failed to open CA certificate file");
+    }
+    X509 *caCert = PEM_read_X509(fp, nullptr, nullptr, nullptr);
+    fclose(fp);
+    if (!caCert) {
+        throw omnetpp::cRuntimeError("Failed to read CA certificate from file");
+    }
+
+    // Extract public key from CA certificate
+    EVP_PKEY *caPublicKey = X509_get_pubkey(caCert);
+    if (!caPublicKey) {
+        X509_free(caCert);
+        throw omnetpp::cRuntimeError("Failed to extract public key from CA certificate");
+    }
+
+    // Load certificate from string
+    BIO *bio = BIO_new_mem_buf(certString.data(), certString.size());
+    if (!bio) {
+        EVP_PKEY_free(caPublicKey);
+        X509_free(caCert);
+        throw omnetpp::cRuntimeError("Failed to create BIO");
+    }
+
+    X509 *cert = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr);
+    if (!cert) {
+        BIO_free(bio);
+        EVP_PKEY_free(caPublicKey);
+        X509_free(caCert);
+        throw omnetpp::cRuntimeError("Failed to read certificate from string");
+    }
+
+    // Verify certificate
+    int result = X509_verify(cert, caPublicKey);
+
+    X509_free(cert);
+    BIO_free(bio);
+    EVP_PKEY_free(caPublicKey);
+    X509_free(caCert);
+
+    return result == 1;
+}
+
+
+std::string ApplVKeyManage::encryptSM4Key(const std::string& publicKeyString)
+{
+    //
+    CryptoPP::ByteQueue publicKeyBytes;
+    publicKeyBytes.Put(reinterpret_cast<const CryptoPP::byte*>(publicKeyString.data()), publicKeyString.size());
+    publicKeyBytes.MessageEnd();
+
+    CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> publicKey;
+    publicKey.Load(publicKeyBytes);
+
+    //
+    CryptoPP::ECIES<CryptoPP::ECP>::Encryptor encryptor(publicKey);
+
+    //
+    std::string plainText = byteArrayToHexString(sm4Key, SM4_KEY_LENGTH);
+    std::string encryptedText;
+    CryptoPP::StringSource(plainText, true,
+        new CryptoPP::PK_EncryptorFilter(CryptoPP::GlobalRNG(), encryptor,
+            new CryptoPP::Base64Encoder(
+                new CryptoPP::StringSink(encryptedText),
+                false
+            )
+        )
+    );
+
+    return encryptedText;
+}
+
+
+void ApplVKeyManage::decryptSM4Key(std::string privateKeyFile, const std::string& cipherText)
+{
+    // 读取 PEM 格式的 SM2 私钥文件
+    FILE* file = fopen(privateKeyFile.c_str(), "rb");
+    if (!file) {
+        throw std::runtime_error("Failed to open private key file");
+    }
+    EVP_PKEY* privateKey = PEM_read_PrivateKey(file, nullptr, nullptr, nullptr);
+    fclose(file);
+    if (!privateKey) {
+        throw std::runtime_error("Failed to read private key");
+    }
+
+    // 将 PEM 格式的 SM2 私钥转换为 Crypto++ 的私钥类型
+    const EC_KEY* ecKey = EVP_PKEY_get0_EC_KEY(privateKey);
+    CryptoPP::ECP::GroupParameters_EC<CryptoPP::ECP> params;
+    const EC_GROUP* ecGroup = EC_KEY_get0_group(ecKey);
+    CryptoPP::ECParameters ecParams;
+    ecParams.InitializeFromGroupParameters(ecGroup);
+    ecParams.GetCurve().Encode(params.GetCurve());
+    params.SetSubgroupGenerator(CryptoPP::Integer(ecParams.GetSubgroupGenerator()));
+    params.SetModulus(CryptoPP::Integer(ecParams.GetModulus()));
+    params.SetCofactor(CryptoPP::Integer(ecParams.GetCofactor()));
+    CryptoPP::DL_GroupParameters_EC<CryptoPP::ECP> groupParams(params);
+    groupParams.SetPointCompression(true);
+    CryptoPP::ECPrivateKey cryptoPrivateKey;
+    cryptoPrivateKey.Initialize(groupParams);
+    CryptoPP::DL_PrivateKey_EC<CryptoPP::ECP> privateKeyImpl(cryptoPrivateKey);
+    CryptoPP::Integer privateKeyInt(EC_KEY_get0_private_key(ecKey));
+    privateKeyImpl.SetPrivateExponent(privateKeyInt);
+
+    // 使用 Crypto++ 解密密文
+    CryptoPP::AutoSeededRandomPool prng;
+    CryptoPP::byte iv[CryptoPP::AES::BLOCKSIZE] = {0};
+    std::string decryptedText;
+    CryptoPP::StringSource(cipherText, true,
+        new CryptoPP::PK_DecryptorFilter(prng, privateKeyImpl,
+            new CryptoPP::StreamTransformationFilter(
+                new CryptoPP::SM2Decryptor(), new CryptoPP::StringSink(decryptedText)
+            )
+        )
+    );
+
+    EVP_PKEY_free(privateKey);
+
+    return decryptedText;
+}
+
+
+std::string ApplVKeyManage::byteArrayToHexString(const unsigned char* byteArray, int length)
+{
+    std::stringstream ss;
+    ss << std::hex << std::setfill('0');
+    for (int i = 0; i < length; ++i)
+    {
+        ss << std::setw(2) << static_cast<unsigned>(byteArray[i]);
+    }
+    return ss.str();
 }
 
 }

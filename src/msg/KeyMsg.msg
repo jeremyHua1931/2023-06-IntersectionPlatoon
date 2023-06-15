@@ -19,12 +19,8 @@ typedef std::deque<std::string> stringQueue;
 
 typedef struct 
 {   
-    // values used by KEY_REQ
-    stringQueue plnMembersList;
-    
     // values used by CERT_MSG
     std::string cert;
-    
     // values used by ENCRYPT_KEY
     std::string encryptSM4Key;
 } value_k;

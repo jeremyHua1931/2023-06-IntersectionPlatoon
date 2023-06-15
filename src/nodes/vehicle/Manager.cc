@@ -207,13 +207,13 @@ void ApplVManager::onMessageType(omnetpp::cMessage* msg)
 
         onPltCtrl(wsm);
     }
-//    else if(msg->getKind() == TYPE_KEY_MESSAGE)
-//    {
-//        KeyMsg* wsm = dynamic_cast<KeyMsg*>(msg);
-//        ASSERT(wsm);
-//
-//        onKeyMsg(wsm);
-//    }
+    else if(msg->getKind() == TYPE_KEY_MESSAGE)
+    {
+        KeyMsg* wsm = dynamic_cast<KeyMsg*>(msg);
+        ASSERT(wsm);
+
+        onKeyMsg(wsm);
+    }
     // todo
     else if(msg->getKind() == TYPE_CRL_PIECE)
     {
