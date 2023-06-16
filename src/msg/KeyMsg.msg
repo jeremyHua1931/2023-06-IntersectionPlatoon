@@ -15,14 +15,14 @@
 cplusplus {{
 #include "WaveShortMessage_m.h"
 #include <deque>
-typedef std::deque<std::string> stringQueue;
+typedef std::vector<uint8_t> uintVector;
 
 typedef struct 
 {   
     // values used by CERT_MSG
-    std::string cert;
+	uintVector certificate;
     // values used by ENCRYPT_KEY
-    std::string encryptSM4Key;
+    uintVector encryptedKey;
 } value_k;
 
 }}

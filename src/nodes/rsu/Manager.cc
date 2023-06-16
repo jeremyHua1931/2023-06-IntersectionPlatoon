@@ -144,6 +144,10 @@ void ApplRSUManager::handleLowerMsg(omnetpp::cMessage* msg)
     {
         // ignore
     }
+    else if(msg->getKind() == TYPE_KEY_MESSAGE)
+    {
+        // ignore
+    }
     else
         throw omnetpp::cRuntimeError("RSU %s received unsupported msg %s of type %d!", SUMOID.c_str(), msg->getName(), msg->getKind());
 

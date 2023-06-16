@@ -51,7 +51,7 @@ typedef enum WaveApplMessageTypes {
     TYPE_CRL_PIECE,
     TYPE_PLATOON_INFO,         //platoonInfo, leader to RSU
     TYPE_PLATOON_CONTROL,      //platoonControl, RSU to leader
-    TYPE_KEY_MESSAGE,
+    TYPE_KEY_MESSAGE,          //platoon key distribute
 
     TYPE_BROADCAST_DATA,     // message dissemination
 

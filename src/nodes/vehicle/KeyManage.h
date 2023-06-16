@@ -11,18 +11,13 @@
 #include "nodes/vehicle/05_PlatoonMg.h"
 #include "msg/dataMsg_m.h"
 #include "msg/KeyMsg_m.h"
-#include <openssl/evp.h>
-#include <openssl/sm2.h>
-#include <openssl/rand.h>
-#include <openssl/pem.h>
-#include <openssl/x509.h>
-#include <openssl/x509v3.h>
-#include <openssl/bio.h>
-#include <openssl/ec.h>
-#include <openssl/err.h>
+#include <gmssl/x509.h>
+#include <gmssl/error.h>
+#include <gmssl/sm2.h>
+#include <gmssl/sm4.h>
 
-
-#define SM4_KEY_LENGTH 16
+//#define SM4_KEY_SIZE 16
+#define CERT_BUF 4096
 
 namespace VENTOS {
 
@@ -41,9 +36,12 @@ private:
 
         } uCommand_k;
     bool grouKeyEnabled;
-    std::vector<unsigned char> sm4Key;   // assumed place at safe position in vehicle
-
-
+    uint8_t sm4key[SM4_KEY_SIZE];   // assumed place at safe position in vehicle
+    struct BufferData
+    {
+        uint8_t* content;
+        size_t len;
+    };
 
 public:
     ~ApplVKeyManage();
@@ -59,17 +57,15 @@ protected:
 
 private:
     void sendKeyMsg(std::string receiverID, uCommand_k msgType, std::string receivingPlatoonID, value_k value = value_k());
-    bool generateSM4Key();
-    std::string encodeSM4Key();
+    void generateSM4Key();
     void decodeSM4Key(const std::string& encodedKey);
-    std::string ReadCertificateToString(const std::string &filepath);
-    bool verifyCert(const std::string &certString, const std::string &caCertFilePath);
-    std::string encryptSM4Key(const std::string &certString);
-    std::string decryptSM4Key(std::string privateKeyPath, const std::string& ciphertext);
-    std::string sm4KeyToString();
-    void stringToSm4Key(const std::string& keyString);
-    std::string encryptWithSM2PublicKey(const std::string& sm2CertificateString, const std::string& plaintext);
-    std::string decryptWithSM2PrivateKey(const std::string& privateKeyPath, const std::string& ciphertext);
+    BufferData readCertificateFromPath(const std::string &certificatePath);
+    bool verifyCert(const BufferData& cert, const BufferData& cacert, const char* signerId);
+    BufferData encryptSM4Key(const BufferData& cert);
+    BufferData decryptSM4Key(const std::string privateKeyFile, const char *pass, const BufferData& ciphertext);
+    std::string uint8ArrayToHexString(const uint8_t* array, size_t size);
+    std::vector<uint8_t> encodeBufferData(const BufferData& bufferData);
+    BufferData decodeBufferData(const std::vector<uint8_t>& encodedData);
 };
 }
 #endif
