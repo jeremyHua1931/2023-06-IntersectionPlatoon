@@ -29,7 +29,6 @@
 #define ApplVMANAGER_H
 
 #include "KeyManage.h"
-//#include "05_PlatoonMg.h"
 
 namespace VENTOS {
 

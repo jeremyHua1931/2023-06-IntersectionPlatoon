@@ -12,22 +12,15 @@
 #include "msg/dataMsg_m.h"
 #include "msg/KeyMsg_m.h"
 #include <openssl/evp.h>
+#include <openssl/sm2.h>
 #include <openssl/rand.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
+#include <openssl/x509v3.h>
 #include <openssl/bio.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
-#include <cryptopp/ecp.h>
-#include <cryptopp/eccrypto.h>
-#include <cryptopp/asn.h>
-#include <cryptopp/base64.h>
-#include <cryptopp/filters.h>
-#include <cryptopp/osrng.h>
-#include <cryptopp/hex.h>
-#include <cryptopp/oids.h>
-//#include <cryptopp/pem.h>
-#include <cryptopp/files.h>
+
 
 #define SM4_KEY_LENGTH 16
 
@@ -48,7 +41,7 @@ private:
 
         } uCommand_k;
     bool grouKeyEnabled;
-    unsigned char sm4Key[SM4_KEY_LENGTH];   // assumed place at safe position in vehicle
+    std::vector<unsigned char> sm4Key;   // assumed place at safe position in vehicle
 
 
 
@@ -62,16 +55,21 @@ protected:
     virtual void handleSelfMsg(omnetpp::cMessage*);
     void onBeaconVehicle(BeaconVehicle* wsm);
     void onBeaconRSU(BeaconRSU* wsm);
+    void onKeyMsg(KeyMsg *wsm);
 
 private:
-    void onKeyMsg(KeyMsg *wsm);
     void sendKeyMsg(std::string receiverID, uCommand_k msgType, std::string receivingPlatoonID, value_k value = value_k());
-    bool generateSM4Key(unsigned char* key);
+    bool generateSM4Key();
+    std::string encodeSM4Key();
+    void decodeSM4Key(const std::string& encodedKey);
     std::string ReadCertificateToString(const std::string &filepath);
     bool verifyCert(const std::string &certString, const std::string &caCertFilePath);
     std::string encryptSM4Key(const std::string &certString);
-    void decryptSM4Key(std::string privateKeyPath, const std::string& ciphertext);
-    std::string byteArrayToHexString(const unsigned char* byteArray, int length);
+    std::string decryptSM4Key(std::string privateKeyPath, const std::string& ciphertext);
+    std::string sm4KeyToString();
+    void stringToSm4Key(const std::string& keyString);
+    std::string encryptWithSM2PublicKey(const std::string& sm2CertificateString, const std::string& plaintext);
+    std::string decryptWithSM2PrivateKey(const std::string& privateKeyPath, const std::string& ciphertext);
 };
 }
 #endif

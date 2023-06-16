@@ -4,8 +4,8 @@ for i in {1..7}
 do
     cd "veh.$i"
     echo "Processing veh.$i..."
-    openssl ecparam -genkey -name SM2 -out private_key.pem
-	openssl req -new -key private_key.pem -out request.csr
-	openssl x509 -req -in request.csr -CA ../CA/ca_cert.pem -CAkey ../CA/ca_key.pem -CAcreateserial -out cert.pem
+    gmssl ecparam -genkey -name sm2p256v1 -out private.key
+	gmssl req -new -key private.key -out request.csr
+	gmssl x509 -req -days 365 -in request.csr -CA ../CA/ca_certificate.crt -CAkey ../CA/ca_private.key -CAcreateserial -out certificate.crt
     cd ..
 done
