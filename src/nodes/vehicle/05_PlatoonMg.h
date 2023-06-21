@@ -29,6 +29,7 @@
 #define APPLVPLATOONMG_H
 
 #include "nodes/vehicle/04_Platoon.h"
+#include "msg/PlatoonMsg_m.h"
 #include "msg/PltInfo_m.h"
 #include "msg/PltCtrl_m.h"
 #include "StringPacket.h"
@@ -159,8 +160,6 @@ private:
             {ACK, "ACK"}
     };
 
-
-protected:
     typedef enum states_num
     {
         state_idle,             // 0
@@ -304,9 +303,9 @@ public:
 protected:
     virtual void handleSelfMsg(omnetpp::cMessage*);
     virtual void handlePositionUpdate(cObject*);
-
     virtual void onBeaconVehicle(BeaconVehicle*);
     virtual void onBeaconRSU(BeaconRSU*);
+
     virtual void onPlatoonMsg(PlatoonMsg* wsm);
     virtual void onPltInfo(PltInfo* wsm);
     virtual void onPltCtrl(PltCtrl* wsm);  // leader receive PltCtrl

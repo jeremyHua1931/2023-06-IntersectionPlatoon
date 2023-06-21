@@ -28,14 +28,14 @@
 #ifndef APPLRSUMANAGER_H_
 #define APPLRSUMANAGER_H_
 
-#include "GKM.h"
+#include "07_CA.h"
 
 namespace VENTOS {
 
-class ApplRSUManager : public ApplRSUGKM
+class ApplRSUManager : public ApplRSUCA
 {
 private:
-    typedef ApplRSUGKM super;
+    typedef ApplRSUCA super;
 
     omnetpp::simsignal_t Signal_executeEachTS;
 

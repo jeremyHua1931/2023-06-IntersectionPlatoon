@@ -23,6 +23,8 @@ typedef struct
 	uintVector certificate;
     // values used by ENCRYPT_KEY
     uintVector encryptedKey;
+    
+    uintVector testMsg;
 } value_k;
 
 }}

@@ -5,8 +5,7 @@
  *      Author: puyijun
  */
 
-#include "nodes/vehicle/KeyManage.h"
-
+#include "nodes/vehicle/06_KeyManage.h"
 #include "baseAppl/ApplToPhyControlInfo.h"
 #include "MIXIM_veins/nic/phy/PhyToMacControlInfo.h"
 #include "MIXIM_veins/nic/phy/decider/DeciderResult80211.h"
@@ -17,10 +16,12 @@ namespace VENTOS {
 Define_Module(VENTOS::ApplVKeyManage);
 
 #define  SEND_DELAY_OFFSET  0.1
+#define  SEND_TEST_OFFSET  3
+#define  TEST_TEXT_LEN  16
 
 ApplVKeyManage::~ApplVKeyManage()
 {
-    
+    cancelAndDelete(TIMER);
 }
 
 void ApplVKeyManage::initialize(int stage)
@@ -35,12 +36,16 @@ void ApplVKeyManage::initialize(int stage)
         getSimulation()->getSystemModule()->subscribe("memberChangeSignal", this);
         getSimulation()->getSystemModule()->subscribe("newLeaderSignal", this);
 
+        TIMER = new omnetpp::cMessage("timer to send test message");
+
         // if i am leader, play GKM
         // generate sm2 key, send
         if(myPlnDepth == 0)
         {
             generateSM4Key();
             sendKeyMsg("multicast", CERT_REQ, myPlnID);
+            std::string stringSM4Key = uint8ArrayToHexString(sm4key, SM4_KEY_SIZE);
+            LOG_INFO << boost::format("leader--%s SM4 key: %s\n")% SUMOID %stringSM4Key << std::flush;
         }
     }
 }
@@ -65,6 +70,26 @@ void ApplVKeyManage::finish()
 void ApplVKeyManage::handleSelfMsg(omnetpp::cMessage* msg)
 {
     super::handleSelfMsg(msg);
+    if(msg == TIMER)
+    {
+        cancelEvent(TIMER);
+        uint8_t plainText[TEST_TEXT_LEN]= {0x31,0x32,0x33,0x34,0x35,0x36,0x37,0x38,
+                0x31,0x32,0x33,0x34,0x35,0x36,0x37,0x38};
+        SM4_KEY formedSM4Key;
+        sm4_set_encrypt_key(&formedSM4Key, sm4key);
+        uint8_t cbuf[TEST_TEXT_LEN];
+        sm4_encrypt(&formedSM4Key, plainText, cbuf);
+
+        BufferData bufCipherText;
+        bufCipherText.content = cbuf;
+        bufCipherText.len = TEST_TEXT_LEN;
+        value_k value;
+        std::vector<uint8_t> CipherTextEncode = encodeBufferData(bufCipherText);
+        value.testMsg = CipherTextEncode;
+        std::string stringPlainText = uint8ArrayToHexString(plainText, TEST_TEXT_LEN);
+        LOG_INFO << boost::format("\n%s sent secret message: %s\n\n") % SUMOID % stringPlainText << std::flush;
+        sendKeyMsg("broadcast", TEST_MSG, "broadcast", value);
+    }
 }
 
 
@@ -114,17 +139,14 @@ void ApplVKeyManage::onKeyMsg(KeyMsg *wsm)
     if(wsm->getUCommandType() == CERT_REQ && wsm->getSenderID() == myPlnID)
     {
         std::string myCertFilePath = "/home/jeremy/IntersectionPlatoon/examples/intersectionPlatoon/cert&key/" + SUMOID + "/certificate.pem";
-//        LOG_INFO << boost::format("%s\n") % myCertFilePath << std::flush;
         BufferData myCert = readCertificateFromPath(myCertFilePath);
         // check
         std::string myCertStringP = uint8ArrayToHexString(myCert.content, myCert.len);
-        LOG_INFO << boost::format("%s cert: %s\n") % SUMOID % myCertStringP << std::flush;
 
         value_k value;
         std::vector<uint8_t> myCertEncode = encodeBufferData(myCert);
         value.certificate = myCertEncode;
         sendKeyMsg(myPlnID, CERT_MSG, myPlnID, value);
-        LOG_INFO << boost::format("%s send CERT_MSG to %s\n")% SUMOID % myPlnID << std::flush;
     }
 
     /* leader receive certificate from followers, 1.verify it and 2.use pub key to encrypt sm4 key*/
@@ -137,19 +159,22 @@ void ApplVKeyManage::onKeyMsg(KeyMsg *wsm)
         BufferData caCert = readCertificateFromPath(caCertFilePath);
         // check
         std::string certStringP = uint8ArrayToHexString(cert.content, cert.len);
-        LOG_INFO << boost::format("received\n%s cert: %s\n") % sender % certStringP << std::flush;
         // verify
         const char* signerId = "ca";
         bool isCertValid  = verifyCert(cert, caCert, signerId);
         if(isCertValid)
         {
             // encrypt and send
-            LOG_INFO << boost::format("verified\n") << std::flush;
+//            LOG_INFO << boost::format("%s verify %s success\n") % SUMOID % sender << std::flush;
             BufferData encryptKey = encryptSM4Key(cert);
             std::vector<uint8_t> keyEncode = encodeBufferData(encryptKey);
             value_k value;
             value.encryptedKey = keyEncode;
             sendKeyMsg(sender, ENCRYPT_KEY, myPlnID, value);
+        }
+        if (!TIMER->isScheduled())
+        {
+            scheduleAt(omnetpp::simTime() + SEND_TEST_OFFSET, TIMER);
         }
     }
 
@@ -163,14 +188,25 @@ void ApplVKeyManage::onKeyMsg(KeyMsg *wsm)
         std::string privateKeyPath = "/home/jeremy/IntersectionPlatoon/examples/intersectionPlatoon/cert&key/" + SUMOID + "/private_key.pem";
         const char* pass = "1";
         BufferData decryptKey = decryptSM4Key(privateKeyPath, pass, ciphertext);
-        std::string stringSM4Key = uint8ArrayToHexString(decryptKey.content,decryptKey.len);
-
+        std::string stringSM4Key = uint8ArrayToHexString(sm4key,decryptKey.len);
         LOG_INFO << boost::format("%s SM4 key: %s\n")% SUMOID %stringSM4Key << std::flush;
-//        for (size_t i = 0; i < decodedData.len; ++i)
-//            {
-//                std::cout << static_cast<int>(decodedData.content[i]) << " ";
-//            }
-//            std::cout << std::endl;
+    }
+
+    if(wsm->getUCommandType() == TEST_MSG && std::string(wsm->getReceiverID()) == "broadcast" && std::string(wsm->getReceivingPlatoonID()) == "broadcast")
+    {
+        std::vector<uint8_t> CipherTextEncode = wsm->getValue().testMsg;
+        BufferData bufCipherText = decodeBufferData(CipherTextEncode);
+        uint8_t cbuf[TEST_TEXT_LEN];
+        std::copy(bufCipherText.content, bufCipherText.content + TEST_TEXT_LEN, cbuf);
+        uint8_t pbuf[TEST_TEXT_LEN];
+        SM4_KEY formedSM4Key;
+        sm4_set_decrypt_key(&formedSM4Key, sm4key);
+        sm4_decrypt(&formedSM4Key, cbuf, pbuf);
+        BufferData bufPlainText;
+        bufPlainText.content = pbuf;
+        bufPlainText.len = TEST_TEXT_LEN;
+        std::string plainText = uint8ArrayToHexString(bufPlainText.content, bufPlainText.len);
+        LOG_INFO << boost::format("%s received secret message: %s\n\n") % SUMOID % plainText << std::flush;
     }
 
     if(wsm->getUCommandType() == KEY_DELETE && wsm->getSenderID() == myPlnID) //multicast from leaderleaderGKM
@@ -292,6 +328,9 @@ ApplVKeyManage::BufferData ApplVKeyManage::decryptSM4Key(const std::string priva
     BufferData plaintexts;
     plaintexts.content = plaintext;
     plaintexts.len = plaintextLen;
+    for (int i = 0; i < SM4_KEY_SIZE; i++) {
+            sm4key[i] = plaintext[i];
+        }
     return plaintexts;
 }
 
@@ -308,7 +347,6 @@ std::vector<uint8_t> ApplVKeyManage::encodeBufferData(const BufferData& bufferDa
 {
     std::vector<uint8_t> encodedData;
 
-    // 将内容逐字节拷贝到向量中
     for (size_t i = 0; i < bufferData.len; ++i)
     {
         encodedData.push_back(bufferData.content[i]);
@@ -317,16 +355,13 @@ std::vector<uint8_t> ApplVKeyManage::encodeBufferData(const BufferData& bufferDa
     return encodedData;
 }
 
-// 解码字符串为certificate结构体
 ApplVKeyManage::BufferData ApplVKeyManage::decodeBufferData(const std::vector<uint8_t>& encodedData)
 {
     BufferData bufferData;
     bufferData.len = encodedData.size();
 
-    // 分配内存以存储解码后的数据
     bufferData.content = new uint8_t[bufferData.len];
 
-    // 将向量中的数据逐字节复制到Buffer Data结构中
     for (size_t i = 0; i < bufferData.len; ++i)
     {
         bufferData.content[i] = encodedData[i];
@@ -334,5 +369,6 @@ ApplVKeyManage::BufferData ApplVKeyManage::decodeBufferData(const std::vector<ui
 
     return bufferData;
 }
+
 
 }

@@ -8,23 +8,21 @@
 #ifndef APPLRSUGKM_H
 #define APPLRSUGKM_H
 
-#include "nodes/rsu/Intersection.h"
-//#include "nodes/vehicle/KeyManage.h"
+#include "06_Intersection.h"
 #include "msg/KeyMsg_m.h"
 
 
 namespace VENTOS {
 
-class ApplRSUGKM : public ApplRSUIntersection
+class ApplRSUCA : public ApplRSUIntersection
 {
 private:
     typedef ApplRSUIntersection super;
 
 private:
-    void sendEncryptKey();
 
 public:
-    ~ApplRSUGKM();
+    ~ApplRSUCA();
     virtual void initialize(int stage);
     virtual void finish();
 
@@ -33,7 +31,7 @@ protected:
     void onBeaconVehicle(BeaconVehicle* wsm);
     void onBeaconRSU(BeaconRSU* wsm);
     void executeEachTimeStep();
-    void onKeyManage();
+    void onKeyMsg();
 };
 
 }

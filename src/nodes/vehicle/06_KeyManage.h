@@ -34,8 +34,11 @@ private:
             KEY_DELETE,      // leader ask followers to delete key
             DEL_ACK,         // follower send ack after delete
 
+            TEST_MSG,
+
         } uCommand_k;
     bool grouKeyEnabled;
+    omnetpp::cMessage* TIMER = NULL;
     uint8_t sm4key[SM4_KEY_SIZE];   // assumed place at safe position in vehicle
     struct BufferData
     {

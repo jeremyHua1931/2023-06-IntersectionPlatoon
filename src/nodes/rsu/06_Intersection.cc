@@ -25,7 +25,7 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //
 
-#include "nodes/rsu/Intersection.h"
+#include "06_Intersection.h"
 
 namespace VENTOS {
 
@@ -209,7 +209,7 @@ ApplRSUIntersection::CtrlValue ApplRSUIntersection::getCtrlValue(double TG, TraC
             optSize = floor((nextRedTime - leaderArrivalTime) / TG) + 1;
             break;
         case WAIT_STAGE:
-            refVelocity = distance / nextGreenTime;
+            refVelocity = distance / nextGreenTime - 1;
             optSize = floor(greenDuration / TG) + 1;
             break;
     }

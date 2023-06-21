@@ -4,19 +4,19 @@
  *  Created on: Jun 13, 2023
  *      Author: puyijun
  */
-#include "nodes/rsu/GKM.h"
+#include "07_CA.h"
 
 namespace VENTOS {
 
-Define_Module(VENTOS::ApplRSUGKM);
+Define_Module(VENTOS::ApplRSUCA);
 
-ApplRSUGKM::~ApplRSUGKM()
+ApplRSUCA::~ApplRSUCA()
 {
 
 }
 
 
-void ApplRSUGKM::initialize(int stage)
+void ApplRSUCA::initialize(int stage)
 {
     super::initialize(stage);
 
@@ -27,46 +27,42 @@ void ApplRSUGKM::initialize(int stage)
 }
 
 
-void ApplRSUGKM::finish()
+void ApplRSUCA::finish()
 {
     super::finish();
 }
 
-void ApplRSUGKM::executeEachTimeStep()
+void ApplRSUCA::executeEachTimeStep()
 {
     // call the super method
     super::executeEachTimeStep();
 }
 
 
-void ApplRSUGKM::handleSelfMsg(omnetpp::cMessage* msg)
+void ApplRSUCA::handleSelfMsg(omnetpp::cMessage* msg)
 {
     super::handleSelfMsg(msg);
 }
 
 
-void ApplRSUGKM::onBeaconVehicle(BeaconVehicle* wsm)
+void ApplRSUCA::onBeaconVehicle(BeaconVehicle* wsm)
 {
     // pass it down!
     super::onBeaconVehicle(wsm);
 }
 
 
-void ApplRSUGKM::onBeaconRSU(BeaconRSU* wsm)
+void ApplRSUCA::onBeaconRSU(BeaconRSU* wsm)
 {
     // pass it down!
     super::onBeaconRSU(wsm);
 }
 
-void ApplRSUGKM::onKeyManage()
+void ApplRSUCA::onKeyMsg()
 {
 
 }
 
-void ApplRSUGKM::sendEncryptKey()
-{
-
-}
 
 }
 
