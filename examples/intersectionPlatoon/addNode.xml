@@ -46,3 +46,11 @@
     platoonMaxSpeed="0" pltMgmtProt="true" optSize="8" maxSize="10" interGap="3"/>
 
 </addNode>
+
+<addNode id="example_5">
+    
+    <!-- platoon-->
+    <vehicle_platoon id="veh" type="TypeCACC2" size="8" route="route1" departPos="100" departLane="1"
+    platoonMaxSpeed="0" pltMgmtProt="true" optSize="8" maxSize="10" interGap="3"/>
+
+</addNode>

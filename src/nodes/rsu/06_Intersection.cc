@@ -130,6 +130,7 @@ ApplRSUIntersection::CtrlValue ApplRSUIntersection::getCtrlValue(double TG, TraC
                 WAIT_STAGE
             };
     Stage currentStage;
+    std::string stageString;
     int nextSwitchTimeMs = TraCI->TLGetNextSwitchTime("2");
     double nextSwitchTime = nextSwitchTimeMs / 1000;
     double currentTime = omnetpp::simTime().dbl();
@@ -159,11 +160,13 @@ ApplRSUIntersection::CtrlValue ApplRSUIntersection::getCtrlValue(double TG, TraC
         if(remainingTime > threshold)
         {
             currentStage = GO_STAGE;
+            stageString = "GO_STAGE";
             nextRedTime = remainingTime;
         }
         else
         {
             currentStage = WAIT_STAGE;
+            stageString = "WAIT_STAGE";
             nextGreenTime = remainingTime + redDuration;
         }
     }
@@ -173,11 +176,13 @@ ApplRSUIntersection::CtrlValue ApplRSUIntersection::getCtrlValue(double TG, TraC
         if(remainingTime > threshold)
         {
             currentStage = WAIT_STAGE;
+            stageString = "WAIT_STAGE";
             nextGreenTime = remainingTime;
         }
         else
         {
             currentStage = GO_STAGE;
+            stageString = "GO_STAGE";
             nextRedTime = remainingTime + greenDuration;
         }
     }
@@ -214,13 +219,13 @@ ApplRSUIntersection::CtrlValue ApplRSUIntersection::getCtrlValue(double TG, TraC
             break;
     }
 
-    LOG_INFO << boost::format(" distance: %.2f\n nowSignal: %s\n remainingTime: %.2f\n threshold: %.2f\n currentStage: %d\n "
+    LOG_INFO << boost::format(" distance: %.2f\n nowSignal: %s\n remainingTime: %.2f\n threshold: %.2f\n currentStage: %s\n "
             "nextGreenTime: %.2f\n nextRedTime: %.2f\n leaderArrivalTime: %.2f\n refVelocity: %.2f\n optSize:%.2f\n")
                                 %distance
                                 %nowSignal
                                 %remainingTime
                                 %threshold
-                                %currentStage
+                                %stageString
                                 %nextGreenTime
                                 %nextRedTime
                                 %leaderArrivalTime

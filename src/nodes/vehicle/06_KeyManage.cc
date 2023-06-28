@@ -40,7 +40,7 @@ void ApplVKeyManage::initialize(int stage)
 
         // if i am leader, play GKM
         // generate sm2 key, send
-        if(myPlnDepth == 0)
+        if(myPlnDepth == 0 && grouKeyEnabled)
         {
             generateSM4Key();
             sendKeyMsg("multicast", CERT_REQ, myPlnID);
@@ -70,7 +70,7 @@ void ApplVKeyManage::finish()
 void ApplVKeyManage::handleSelfMsg(omnetpp::cMessage* msg)
 {
     super::handleSelfMsg(msg);
-    if(msg == TIMER)
+    if(msg == TIMER && grouKeyEnabled)
     {
         cancelEvent(TIMER);
         uint8_t plainText[TEST_TEXT_LEN]= {0x31,0x32,0x33,0x34,0x35,0x36,0x37,0x38,
@@ -109,14 +109,14 @@ void ApplVKeyManage::receiveSignal(omnetpp::cComponent *source, omnetpp::simsign
     else
         throw omnetpp::cRuntimeError("Wrong signal value");
 
-    if(signalID == memberChangeSignal && senderSUMOID == SUMOID)
+    if(signalID == memberChangeSignal && senderSUMOID == SUMOID && grouKeyEnabled)
     {
         LOG_WARNING << boost::format("%s: front leader change key...\n")
                 % SUMOID << std::flush;
         generateSM4Key();
         sendKeyMsg("multicast", CERT_REQ, myPlnID);
     }
-    else if(signalID == newLeaderSignal && senderSUMOID == SUMOID)
+    else if(signalID == newLeaderSignal && senderSUMOID == SUMOID && grouKeyEnabled)
     {
         LOG_WARNING << boost::format("%s: back leader generate key...\n")
                         % SUMOID << std::flush;
@@ -136,7 +136,7 @@ void ApplVKeyManage::onBeaconRSU(BeaconRSU* wsm)
 void ApplVKeyManage::onKeyMsg(KeyMsg *wsm)
 {
     /* followers, send CERT_MSG to leader */
-    if(wsm->getUCommandType() == CERT_REQ && wsm->getSenderID() == myPlnID)
+    if(wsm->getUCommandType() == CERT_REQ && wsm->getSenderID() == myPlnID && grouKeyEnabled)
     {
         std::string myCertFilePath = "/home/jeremy/IntersectionPlatoon/examples/intersectionPlatoon/cert&key/" + SUMOID + "/certificate.pem";
         BufferData myCert = readCertificateFromPath(myCertFilePath);
@@ -150,7 +150,7 @@ void ApplVKeyManage::onKeyMsg(KeyMsg *wsm)
     }
 
     /* leader receive certificate from followers, 1.verify it and 2.use pub key to encrypt sm4 key*/
-    if(wsm->getUCommandType() == CERT_MSG && wsm->getReceiverID() == SUMOID)
+    if(wsm->getUCommandType() == CERT_MSG && wsm->getReceiverID() == SUMOID && grouKeyEnabled)
     {
         std::vector<uint8_t> certEncode= wsm->getValue().certificate;
         BufferData cert = decodeBufferData(certEncode);
@@ -179,7 +179,7 @@ void ApplVKeyManage::onKeyMsg(KeyMsg *wsm)
     }
 
     /* follower receive encrypt key, decrypt and use it to communicate*/
-    if(wsm->getUCommandType() == ENCRYPT_KEY && wsm->getReceiverID() == SUMOID) //multicast from leaderGKM
+    if(wsm->getUCommandType() == ENCRYPT_KEY && wsm->getReceiverID() == SUMOID && grouKeyEnabled) //multicast from leaderGKM
     {
         LOG_INFO << boost::format("%s received sm4 key\n")% SUMOID << std::flush;
 
@@ -192,7 +192,7 @@ void ApplVKeyManage::onKeyMsg(KeyMsg *wsm)
         LOG_INFO << boost::format("%s SM4 key: %s\n")% SUMOID %stringSM4Key << std::flush;
     }
 
-    if(wsm->getUCommandType() == TEST_MSG && std::string(wsm->getReceiverID()) == "broadcast" && std::string(wsm->getReceivingPlatoonID()) == "broadcast")
+    if(wsm->getUCommandType() == TEST_MSG && std::string(wsm->getReceiverID()) == "broadcast" && std::string(wsm->getReceivingPlatoonID()) == "broadcast" && grouKeyEnabled)
     {
         std::vector<uint8_t> CipherTextEncode = wsm->getValue().testMsg;
         BufferData bufCipherText = decodeBufferData(CipherTextEncode);
@@ -209,13 +209,13 @@ void ApplVKeyManage::onKeyMsg(KeyMsg *wsm)
         LOG_INFO << boost::format("%s received secret message: %s\n\n") % SUMOID % plainText << std::flush;
     }
 
-    if(wsm->getUCommandType() == KEY_DELETE && wsm->getSenderID() == myPlnID) //multicast from leaderleaderGKM
+    if(wsm->getUCommandType() == KEY_DELETE && wsm->getSenderID() == myPlnID && grouKeyEnabled) //multicast from leaderleaderGKM
     {
         // followers, delete key
         // ...
     }
 
-    if(wsm->getUCommandType() == DEL_ACK && wsm->getReceiverID() == SUMOID) //unicast for from followers
+    if(wsm->getUCommandType() == DEL_ACK && wsm->getReceiverID() == SUMOID && grouKeyEnabled) //unicast for from followers
     {
         // leader, send REV_REQ to GKM
     }
