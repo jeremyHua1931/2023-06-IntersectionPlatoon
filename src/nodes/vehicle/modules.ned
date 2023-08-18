@@ -131,6 +131,7 @@ simple ApplVPlatoonMg extends ApplVPlatoon
         bool splitEnabled = default(true);
         bool followerLeaveEnabled = default(true);
         bool leaderLeaveEnabled = default(true);
+        bool intersectionManagement = default(true);
 }
 
 

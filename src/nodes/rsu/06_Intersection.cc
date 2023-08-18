@@ -214,7 +214,7 @@ ApplRSUIntersection::CtrlValue ApplRSUIntersection::getCtrlValue(double TG, TraC
             optSize = floor((nextRedTime - leaderArrivalTime) / TG) + 1;
             break;
         case WAIT_STAGE:
-            refVelocity = distance / nextGreenTime - 1;
+            refVelocity = distance / nextGreenTime - 2;
             optSize = floor(greenDuration / TG) + 1;
             break;
     }

@@ -48,6 +48,11 @@ void ApplVBeacon::initialize(int stage)
         TraCI->vehicleSetDebug(getParentModule()->par("SUMOID").stringValue(), getParentModule()->par("SUMOvehicleDebug").boolValue());
 
         sonarDist = par("sonarDist").doubleValue();
+        positionXVector.setName("Position X");
+        positionYVector.setName("Position Y");
+        speedVector.setName("Speed");
+        accVector.setName("Acceleration");
+
     }
 }
 
@@ -171,6 +176,16 @@ std::string ApplVBeacon::getPlatoonId()
 int ApplVBeacon::getPlatoonDepth()
 {
     throw omnetpp::cRuntimeError("Platoon class should implement this method!");
+}
+
+void ApplVBeacon::handlePositionUpdate(omnetpp::cObject* obj)
+{
+    BaseWaveApplLayer::handlePositionUpdate(obj);
+    TraCICoord position = TraCI->vehicleGetPosition(SUMOID);
+    positionXVector.record(position.x);
+    positionYVector.record(position.y);
+    speedVector.record(TraCI->vehicleGetSpeed(SUMOID));
+    accVector.record(TraCI->vehicleGetCurrentAccel(SUMOID));
 }
 
 }

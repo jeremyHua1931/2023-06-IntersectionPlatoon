@@ -63,6 +63,8 @@ ApplVPlatoonMg::~ApplVPlatoonMg()
     cancelAndDelete(plnTIMER11);
 
     cancelAndDelete(plnTIMER12);
+
+    cancelAndDelete(intersectionTIMER);
 }
 
 
@@ -112,6 +114,7 @@ void ApplVPlatoonMg::initialize(int stage)
         splitEnabled = par("splitEnabled").boolValue();
         followerLeaveEnabled = par("followerLeaveEnabled").boolValue();
         leaderLeaveEnabled = par("leaderLeaveEnabled").boolValue();
+        intersectionManagement = par("intersectionManagement").boolValue();
 
         setVehicleState((myPlnDepth == 0) ? state_platoonLeader : state_platoonFollower);
 
@@ -161,6 +164,10 @@ void ApplVPlatoonMg::initialize(int stage)
         // --------
         plnTIMER12 = new omnetpp::cMessage("wait for DISSOLVE ACK");
 
+        //intersection
+        //---------
+        intersectionTIMER = new omnetpp::cMessage("wait for assigned speed");
+
         // if platoonMonitorTIMER is not scheduled earlier
         if(!platoonMonitorTIMER || (platoonMonitorTIMER && !platoonMonitorTIMER->isScheduled()))
         {
@@ -209,6 +216,8 @@ void ApplVPlatoonMg::handleSelfMsg(omnetpp::cMessage* msg)
         followerLeave_handleSelfMsg(msg);
     else if(plnMode == platoonManagement && msg == plnTIMER12)
         dissolve_handleSelfMsg(msg);
+    else if(plnMode == platoonManagement && msg == intersectionTIMER)
+        handleIntersectionTIMER();
     else
         super::handleSelfMsg(msg);
 }
@@ -239,31 +248,34 @@ void ApplVPlatoonMg::onBeaconRSU(BeaconRSU* wsm)
     // pass it down!
     super::onBeaconRSU(wsm);
 
-    // only leader responds beaconRSU
-    if(vehicleState == state_platoonLeader)
+    if(intersectionManagement)
     {
-        //only send once
-        if(!haveSendPltInfo)
+        // only leader responds beaconRSU
+        if(vehicleState == state_platoonLeader)
         {
-            // collect info
-            const char * sender = wsm->getSender();
-            TraCICoord pos = TraCI->vehicleGetPosition(SUMOID);
-            double speed = TraCI->vehicleGetSpeed(SUMOID);
-            double maxAccel = TraCI->vehicleGetMaxAccel(SUMOID);
-            double maxDecel = TraCI->vehicleGetMaxDecel(SUMOID);
-            LOG_INFO << boost::format("%s send PltInfo: receiverID: %s, TG: %.2f, pos_x: %.2f, pos_y: %.2f, speed: %.2f, maxAcc: %.2f \n")
-                        %SUMOID.c_str()
-                        %sender
-                        %TG
-                        %pos.x
-                        %pos.y
-                        %speed
-                        %maxAccel
-                    << std::flush;
-            // call sendPltInfo
-            // use TG instead of TraCI->vehicleGetTimeGap()(TP for leader)
-            sendPltInfo(sender, TG, pos, speed, maxAccel, maxDecel);
-            haveSendPltInfo = true;
+            //only send once
+            if(!haveSendPltInfo)
+            {
+                // collect info
+                const char * sender = wsm->getSender();
+                TraCICoord pos = TraCI->vehicleGetPosition(SUMOID);
+                double speed = TraCI->vehicleGetSpeed(SUMOID);
+                double maxAccel = TraCI->vehicleGetMaxAccel(SUMOID);
+                double maxDecel = TraCI->vehicleGetMaxDecel(SUMOID);
+                LOG_INFO << boost::format("%s send PltInfo: receiverID: %s, TG: %.2f, pos_x: %.2f, pos_y: %.2f, speed: %.2f, maxAcc: %.2f \n")
+                            %SUMOID.c_str()
+                            %sender
+                            %TG
+                            %pos.x
+                            %pos.y
+                            %speed
+                            %maxAccel
+                        << std::flush;
+                // call sendPltInfo
+                // use TG instead of TraCI->vehicleGetTimeGap()(TP for leader)
+                sendPltInfo(sender, TG, pos, speed, maxAccel, maxDecel);
+                haveSendPltInfo = true;
+            }
         }
     }
 }
@@ -292,19 +304,63 @@ void ApplVPlatoonMg::onPltInfo(PltInfo* wsm)
 // then change speed to ref_v and change optSize
 void ApplVPlatoonMg::onPltCtrl(PltCtrl* wsm)
 {
-    std::string receiverID = wsm->getReceiverID();
-    std::string receivingPlatoonID = wsm->getReceivingPlatoonID();
-    if(vehicleState == state_platoonLeader && SUMOID == receiverID && myPlnID == receivingPlatoonID)
+    if(intersectionManagement)
     {
-        optPlnSize = wsm->getOptSize();
-        LOG_INFO << boost::format("%s receive PltCtrl\n optPlnSize: %d\n refSpeed: %.2f\n")
-                                %SUMOID
-                                %optPlnSize
-                                %wsm->getRefSpeed()
-                                << std::flush;
-        TraCI->vehicleSetSpeed(SUMOID, wsm->getRefSpeed());
+        std::string receiverID = wsm->getReceiverID();
+        std::string receivingPlatoonID = wsm->getReceivingPlatoonID();
+        if(vehicleState == state_platoonLeader && SUMOID == receiverID && myPlnID == receivingPlatoonID)
+        {
+            optPlnSize = wsm->getOptSize();
+            LOG_INFO << boost::format("%s receive PltCtrl\n optPlnSize: %d\n refSpeed: %.2f\n")
+                                    %SUMOID
+                                    %optPlnSize
+                                    %wsm->getRefSpeed()
+                                    << std::flush;
+//            TraCI->vehicleSetSpeedMode(SUMOID, 25);
+
+            // set max decel to avoid acute slow down
+//            TraCI->vehicleSetMaxDecel(SUMOID, 0.8); // 1-split
+//            TraCI->vehicleSetMaxDecel(SUMOID, 0.8); // 2-decel
+            TraCI->vehicleSetMaxDecel(SUMOID, 0.7); // 3-merge
+//            TraCI->vehicleSetMaxAccel(SUMOID, 2); // 4-accel
+            TraCI->vehicleSetSpeed(SUMOID, wsm->getRefSpeed());
+            refSpeed = wsm->getRefSpeed();
+
+            // check each updateInterval to see speed
+            scheduleAt(omnetpp::simTime() + updateInterval, intersectionTIMER);
+        }
     }
 }
+
+void ApplVPlatoonMg::handleIntersectionTIMER()
+{
+    bool gapCheck = false;
+    auto leader = TraCI->vehicleGetLeader(SUMOID, sonarDist);
+
+    if(leader.leaderID != "")
+    {
+        // get speed
+        double speed = TraCI->vehicleGetSpeed(SUMOID);
+        double targetGap = speed * (TP + 0.5);
+//        std::cout << "targetGap:" << targetGap << " " << "distance:" << leader.distance2Leader << std::endl;
+        if( leader.distance2Leader <= targetGap )
+        {
+            gapCheck = true;
+            std::cout << "gap Checked, change MaxDecel" << std::endl;
+        }
+    }
+    if(TraCI->vehicleGetSpeed(SUMOID) == refSpeed || gapCheck)
+    {
+        TraCI->vehicleSetMaxDecel(SUMOID, 5.);
+        TraCI->vehicleSetMaxAccel(SUMOID, 3);
+    }
+    else
+    {
+        scheduleAt(omnetpp::simTime() + updateInterval, intersectionTIMER);
+
+    }
+}
+
 
 void ApplVPlatoonMg::sendPltData(std::string receiverID, uCommand_t msgType, std::string receivingPlatoonID, value_t value)
 {
@@ -355,34 +411,37 @@ void ApplVPlatoonMg::sendPltData(std::string receiverID, uCommand_t msgType, std
 // called by onBeaconRSU
 void ApplVPlatoonMg::sendPltInfo(std::string receiverID, double TG, TraCICoord pos, double speed, double maxAccel, double maxDecel)
 {
-    if(plnMode != platoonManagement)
-        throw omnetpp::cRuntimeError("This application mode does not support platoon management!");
+    if(intersectionManagement)
+    {
+        if(plnMode != platoonManagement)
+            throw omnetpp::cRuntimeError("This application mode does not support platoon management!");
 
-    PltInfo* wsm = new PltInfo("pltInfo", TYPE_PLATOON_INFO);
+        PltInfo* wsm = new PltInfo("pltInfo", TYPE_PLATOON_INFO);
 
-    wsm->setWsmVersion(1);
-    wsm->setSecurityType(1);
-    wsm->setChannelNumber(Veins::Channels::CCH);
-    wsm->setDataRate(1);
-    wsm->setPriority(dataPriority);
-    wsm->setPsid(0);
+        wsm->setWsmVersion(1);
+        wsm->setSecurityType(1);
+        wsm->setChannelNumber(Veins::Channels::CCH);
+        wsm->setDataRate(1);
+        wsm->setPriority(dataPriority);
+        wsm->setPsid(0);
 
-    wsm->setSenderID(SUMOID.c_str());
-    wsm->setReceiverID(receiverID.c_str());
-    wsm->setSendingPlatoonID(myPlnID.c_str());
-    wsm->setTG(TG);
-    wsm->setPos(pos);
-    wsm->setSpeed(speed);
-    wsm->setMaxAccel(maxAccel);
-    wsm->setMaxDecel(maxDecel);
+        wsm->setSenderID(SUMOID.c_str());
+        wsm->setReceiverID(receiverID.c_str());
+        wsm->setSendingPlatoonID(myPlnID.c_str());
+        wsm->setTG(TG);
+        wsm->setPos(pos);
+        wsm->setSpeed(speed);
+        wsm->setMaxAccel(maxAccel);
+        wsm->setMaxDecel(maxDecel);
 
-    // add header length
-    wsm->addBitLength(headerLength);
+        // add header length
+        wsm->addBitLength(headerLength);
 
-    // add payload length
-    wsm->addBitLength(dataLengthBits);
+        // add payload length
+        wsm->addBitLength(dataLengthBits);
 
-    sendDelayed(wsm, uniform(0,SEND_DELAY_OFFSET), lowerLayerOut);
+        sendDelayed(wsm, uniform(0,SEND_DELAY_OFFSET), lowerLayerOut);
+    }
 }
 
 // change the blue color of the follower to show depth
@@ -899,6 +958,7 @@ void ApplVPlatoonMg::merge_BeaconFSM(BeaconVehicle* wsm)
         // can we merge?
         if(!busy && plnSize < optPlnSize)
         {
+//            LOG_INFO << boost::format("%s can merge \n") % SUMOID << std::flush;
             if(isBeaconFromFrontVehicle(wsm))
             {
                 int finalPlnSize = wsm->getPlatoonDepth() + 1 + plnSize;
@@ -1559,6 +1619,7 @@ void ApplVPlatoonMg::split_DataFSM(PlatoonMsg *wsm)
 
             updateColorDepth();
 
+            // *************** TP
             TraCI->vehicleSetTimeGap(SUMOID, TP);
 
             TraCI->vehiclePlatoonInit(SUMOID, plnMembersList);
@@ -1575,7 +1636,8 @@ void ApplVPlatoonMg::split_DataFSM(PlatoonMsg *wsm)
                     TraCI->vehicleSetSpeed(SUMOID, 30.); // set max speed
             }
             else
-                TraCI->vehicleSetSpeed(SUMOID, 30.); // set max speed
+                TraCI->vehicleSetSpeed(SUMOID, 20); // set max speed
+//                TraCI->vehicleSetSpeed(SUMOID, 7.5); // for example1
 
             setVehicleState(state_waitForGap);
 

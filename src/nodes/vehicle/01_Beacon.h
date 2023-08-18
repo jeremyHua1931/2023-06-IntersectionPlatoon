@@ -42,6 +42,10 @@ private:
 
 protected:
     double sonarDist;
+    omnetpp::cOutVector positionXVector;
+    omnetpp::cOutVector positionYVector;
+    omnetpp::cOutVector speedVector;
+    omnetpp::cOutVector accVector;
 
 public:
     ~ApplVBeacon();
@@ -58,6 +62,7 @@ protected:
 
     virtual std::string getPlatoonId();
     virtual int getPlatoonDepth();
+    virtual void handlePositionUpdate(omnetpp::cObject* obj);
 
 private:
     BeaconVehicle* generateBeacon();

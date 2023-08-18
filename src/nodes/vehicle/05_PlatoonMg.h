@@ -52,6 +52,7 @@ protected:
     bool splitEnabled;
     bool followerLeaveEnabled;
     bool leaderLeaveEnabled;
+    bool intersectionManagement;
 
 private:
     typedef ApplVPlatoon super;
@@ -105,6 +106,11 @@ private:
     // --[ dissolve ]--
     omnetpp::cMessage* plnTIMER12 = NULL;
     std::string lastVeh = "";
+
+    // --[intersection]--
+    omnetpp::cMessage* intersectionTIMER = NULL;
+
+    double refSpeed = 0.;
 
     typedef enum uCommand
     {
@@ -361,6 +367,8 @@ private:
     void dissolve_handleSelfMsg(omnetpp::cMessage* msg);
     void dissolve_BeaconFSM(BeaconVehicle *wsm = NULL);
     void dissolve_DataFSM(PlatoonMsg *wsm = NULL);
+
+    void handleIntersectionTIMER();
 };
 
 }

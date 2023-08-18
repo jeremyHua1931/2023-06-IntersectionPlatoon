@@ -3,7 +3,8 @@
 <trafficControl id="example_1">
 
     <speed id="veh" begin="0.1" value="14" />
-    <speed id="veh.5" begin="90" value="20" />
+    <speed id="veh.5" begin="95" value="20" />
+     <!-- <speed id="veh.3" begin="95" value="20" /> -->
 
 </trafficControl>
 
@@ -11,7 +12,7 @@
 <trafficControl id="example_2">
 
     <speed id="veh" begin="0.1" value="13" />
-    <speed id="veh" begin="90" value="20" />
+    <speed id="veh" begin="95" value="20" />
 
 </trafficControl>
 
@@ -19,7 +20,11 @@
 <trafficControl id="example_3">
 
     <speed id="veh" begin="0.1" value="13" />
-    <speed id="veh" begin="90" value="20" />
+    <speed id="veh" begin="95" value="20" />
+    
+    <!-- for no adv -->
+    <speed id="veh.3" begin="95" value="20" />
+    <speed id="veh.6" begin="95" value="20" />
 
 </trafficControl>
 
@@ -27,6 +32,7 @@
 <trafficControl id="example_4">
 
     <speed id="veh" begin="0.1" value="13" />
+    <!--<speed id="veh" begin="95" value="20" />-->
 
 </trafficControl>
 
