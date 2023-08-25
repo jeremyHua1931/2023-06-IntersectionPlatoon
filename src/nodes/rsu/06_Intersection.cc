@@ -115,7 +115,7 @@ void ApplRSUIntersection::onPltInfo(PltInfo* wsm)
         CtrlValue cValue = getCtrlValue(TG, pos, speed, maxAccel, maxDecel);
 
         // send PltCtrl.msg
-        sendPltCtrl(sender, sendingPlatoonID, cValue.refVelocity, cValue.optSize);
+        sendPltCtrl(sender, sendingPlatoonID, cValue.refVelocity, cValue.refAcc, cValue.optSize);
     }
 }
 
@@ -146,6 +146,7 @@ ApplRSUIntersection::CtrlValue ApplRSUIntersection::getCtrlValue(double TG, TraC
     char nowSignal = state[17];
     // return value
     double refVelocity;
+    double refAcc;
     int optSize;
 
     if(remainingTime < 0)
@@ -219,8 +220,19 @@ ApplRSUIntersection::CtrlValue ApplRSUIntersection::getCtrlValue(double TG, TraC
             break;
     }
 
+    // TO del
+    if(currentStage == GO_STAGE)
+    {
+        refAcc = 3.;
+    }
+    else
+    {
+        refAcc = -0.18;
+    }
+    // TO del end
+
     LOG_INFO << boost::format(" distance: %.2f\n nowSignal: %s\n remainingTime: %.2f\n threshold: %.2f\n currentStage: %s\n "
-            "nextGreenTime: %.2f\n nextRedTime: %.2f\n leaderArrivalTime: %.2f\n refVelocity: %.2f\n optSize:%.2f\n")
+            "nextGreenTime: %.2f\n nextRedTime: %.2f\n leaderArrivalTime: %.2f\n refVelocity: %.2f\n refAcc: %.2f\n optSize:%.2f\n")
                                 %distance
                                 %nowSignal
                                 %remainingTime
@@ -230,17 +242,19 @@ ApplRSUIntersection::CtrlValue ApplRSUIntersection::getCtrlValue(double TG, TraC
                                 %nextRedTime
                                 %leaderArrivalTime
                                 %refVelocity
+                                %refAcc
                                 %optSize
                                 << std::flush;
 
     ApplRSUIntersection::CtrlValue cValue;
     cValue.refVelocity = refVelocity;
+    cValue.refAcc = refAcc;
     cValue.optSize = optSize;
     return cValue;
 }
 
 // send PltCtrl.msg
-void ApplRSUIntersection::sendPltCtrl(std::string receiverID, std::string receivingPlatoonID, double refSpeed, int optSize)
+void ApplRSUIntersection::sendPltCtrl(std::string receiverID, std::string receivingPlatoonID, double refSpeed, double refAcc, int optSize)
 {
     PltCtrl* wsm = new PltCtrl("pltCtrl", TYPE_PLATOON_CONTROL);
 
@@ -255,6 +269,7 @@ void ApplRSUIntersection::sendPltCtrl(std::string receiverID, std::string receiv
     wsm->setReceiverID(receiverID.c_str());
     wsm->setReceivingPlatoonID(receivingPlatoonID.c_str());
     wsm->setRefSpeed(refSpeed);
+    wsm->setRefAcc(refAcc);
     wsm->setOptSize(optSize);
 
     // add header length

@@ -44,9 +44,10 @@ private:
     typedef struct
     {
         double refVelocity;
+        double refAcc;
         int optSize;
     }CtrlValue;
-    void sendPltCtrl(std::string receiverID, std::string receivingPlatoonID, double refSpeed, int optSize); //sendPltCtrl.msg after calculate
+    void sendPltCtrl(std::string receiverID, std::string receivingPlatoonID, double refSpeed, double refAcc, int optSize); //sendPltCtrl.msg after calculate
     CtrlValue getCtrlValue(double TG, TraCICoord pos, double speed, double maxAccel, double maxDecel);
 
 public:

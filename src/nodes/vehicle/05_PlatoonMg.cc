@@ -311,18 +311,19 @@ void ApplVPlatoonMg::onPltCtrl(PltCtrl* wsm)
         if(vehicleState == state_platoonLeader && SUMOID == receiverID && myPlnID == receivingPlatoonID)
         {
             optPlnSize = wsm->getOptSize();
-            LOG_INFO << boost::format("%s receive PltCtrl\n optPlnSize: %d\n refSpeed: %.2f\n")
+            LOG_INFO << boost::format("%s receive PltCtrl\n optPlnSize: %d\n refSpeed: %.2f\n refAcc:%.2f\n")
                                     %SUMOID
                                     %optPlnSize
                                     %wsm->getRefSpeed()
+                                    %wsm->getRefAcc()
                                     << std::flush;
 //            TraCI->vehicleSetSpeedMode(SUMOID, 25);
 
             // set max decel to avoid acute slow down
-//            TraCI->vehicleSetMaxDecel(SUMOID, 0.8); // 1-split
+            TraCI->vehicleSetMaxDecel(SUMOID, 0.18); // 1-split
 //            TraCI->vehicleSetMaxDecel(SUMOID, 0.8); // 2-decel
-            TraCI->vehicleSetMaxDecel(SUMOID, 0.7); // 3-merge
-//            TraCI->vehicleSetMaxAccel(SUMOID, 2); // 4-accel
+//            TraCI->vehicleSetMaxDecel(SUMOID, 0.7); // 3-merge
+            TraCI->vehicleSetMaxAccel(SUMOID, 2); // 4-accel
             TraCI->vehicleSetSpeed(SUMOID, wsm->getRefSpeed());
             refSpeed = wsm->getRefSpeed();
 
@@ -1280,7 +1281,7 @@ void ApplVPlatoonMg::pltSplitMonitor()
 
         if(!busy && splitEnabled && plnSize > optPlnSize)
         {
-            LOG_INFO << boost::format("platoon %s is splitting from %d\n") %SUMOID %optPlnSize << std::flush;
+            LOG_INFO << boost::format("platoon %s is splitting from %d\n\n\n") %SUMOID %optPlnSize << std::flush;
             splittingDepth = optPlnSize;
             splittingVehicle = plnMembersList[splittingDepth];
             splitCaller = -1;
@@ -1636,8 +1637,8 @@ void ApplVPlatoonMg::split_DataFSM(PlatoonMsg *wsm)
                     TraCI->vehicleSetSpeed(SUMOID, 30.); // set max speed
             }
             else
-                TraCI->vehicleSetSpeed(SUMOID, 20); // set max speed
-//                TraCI->vehicleSetSpeed(SUMOID, 7.5); // for example1
+//                TraCI->vehicleSetSpeed(SUMOID, 20); // set max speed
+                TraCI->vehicleSetSpeed(SUMOID, 7.5); // for example1
 
             setVehicleState(state_waitForGap);
 

@@ -26,5 +26,6 @@ packet PltCtrl extends WaveShortMessage
 	string  receiverID;
 	string  receivingPlatoonID;
     double refSpeed;    // reference speed
+    double refAcc;      // reference acceleration
     int optSize;        // reference optSize
 };
