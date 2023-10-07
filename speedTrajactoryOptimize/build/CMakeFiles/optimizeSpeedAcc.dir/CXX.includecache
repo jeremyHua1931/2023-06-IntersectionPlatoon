@@ -1,0 +1,16 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/jeremy/ipoptTest/optimizeSpeedAcc.cpp
+cppad/ipopt/solve.hpp
+-
+iostream
+-
+cassert
+-
+

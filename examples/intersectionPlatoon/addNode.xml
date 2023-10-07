@@ -6,7 +6,7 @@
 	<rsu id="RSU" pos="-11.5,-11.5,0"  />
     
     <!-- platoon-->
-    <vehicle_platoon id="veh" type="TypeCACC1" size="8" route="route1" departPos="825" departLane="1"
+    <vehicle_platoon id="veh" type="TypeCACC1" size="8" route="route1" departPos="863" departLane="1"
     platoonMaxSpeed="0" pltMgmtProt="true" optSize="8" maxSize="10" interGap="3"/>
 
 </addNode>
@@ -52,5 +52,13 @@
     <!-- platoon-->
     <vehicle_platoon id="veh" type="TypeCACC2" size="8" route="route1" departPos="100" departLane="1"
     platoonMaxSpeed="0" pltMgmtProt="true" optSize="8" maxSize="10" interGap="3"/>
+
+</addNode>
+
+<addNode id="example_random_traffic_flow">
+    
+    <!-- random_traffic_flow-->
+    <vehicle_flow id="flow1" type="passenger" route="route1" departPos="1200" departSpeed="13"
+    begin="0" number="200" distribution="poisson" lambda="1533.6" seed="43" />
 
 </addNode>

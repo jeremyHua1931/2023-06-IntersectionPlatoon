@@ -55,6 +55,9 @@ typedef struct value
     
     // values used by LEAVE_ACCEPT
     bool lastFollower = false;
+    
+    // if is intersectionSplit
+    bool intersectionSplit = false;
 } value_t;
 
 }}

@@ -310,20 +310,43 @@ void ApplVPlatoonMg::onPltCtrl(PltCtrl* wsm)
         std::string receivingPlatoonID = wsm->getReceivingPlatoonID();
         if(vehicleState == state_platoonLeader && SUMOID == receiverID && myPlnID == receivingPlatoonID)
         {
+            std::cout << "optSzie:" << wsm->getOptSize() << std::endl;
+            std::cout << "plnSize:" << plnSize << std::endl;
+            if (wsm->getOptSize() < plnSize)
+                intersectionSplit = true;
             optPlnSize = wsm->getOptSize();
-            LOG_INFO << boost::format("%s receive PltCtrl\n optPlnSize: %d\n refSpeed: %.2f\n refAcc:%.2f\n")
+            LOG_INFO << boost::format("%s receive PltCtrl\n time: %.2f\n optPlnSize: %d\n refSpeed: %.2f\n refAcc:%.2f\n")
                                     %SUMOID
+                                    %omnetpp::simTime().dbl()
                                     %optPlnSize
                                     %wsm->getRefSpeed()
                                     %wsm->getRefAcc()
                                     << std::flush;
-//            TraCI->vehicleSetSpeedMode(SUMOID, 25);
+//            if(SUMOID == "veh")
+//            {
+//                TraCI->vehicleSetSpeedMode(SUMOID, 6); // for example3
+//            }
+
+//            TraCI->vehicleSetSpeedMode(SUMOID, 6); // for example1,2
+            auto leader = TraCI->vehicleGetLeader(SUMOID, sonarDist);
+
+            if(leader.leaderID != "")
+            {
+                if( leader.distance2Leader > 100 )
+                {
+                    TraCI->vehicleSetSpeedMode(SUMOID, 6);
+                    std::cout << "change speed mode" << std::endl;
+                }
+            }
+            else
+            {
+                std::cout << "change speed mode" << std::endl;
+                TraCI->vehicleSetSpeedMode(SUMOID, 6);
+            }
 
             // set max decel to avoid acute slow down
-            TraCI->vehicleSetMaxDecel(SUMOID, 0.18); // 1-split
-//            TraCI->vehicleSetMaxDecel(SUMOID, 0.8); // 2-decel
-//            TraCI->vehicleSetMaxDecel(SUMOID, 0.7); // 3-merge
-            TraCI->vehicleSetMaxAccel(SUMOID, 2); // 4-accel
+            TraCI->vehicleSetMaxDecel(SUMOID, wsm->getRefAcc());
+
             TraCI->vehicleSetSpeed(SUMOID, wsm->getRefSpeed());
             refSpeed = wsm->getRefSpeed();
 
@@ -1281,7 +1304,7 @@ void ApplVPlatoonMg::pltSplitMonitor()
 
         if(!busy && splitEnabled && plnSize > optPlnSize)
         {
-            LOG_INFO << boost::format("platoon %s is splitting from %d\n\n\n") %SUMOID %optPlnSize << std::flush;
+            LOG_INFO << boost::format("platoon %s is splitting from %d\n") %SUMOID %optPlnSize << std::flush;
             splittingDepth = optPlnSize;
             splittingVehicle = plnMembersList[splittingDepth];
             splitCaller = -1;
@@ -1471,6 +1494,7 @@ void ApplVPlatoonMg::split_DataFSM(PlatoonMsg *wsm)
         entry.maxSize = maxPlnSize;
         entry.optPlnSize = optPlnSize;
         entry.manualSplit = manualSplit;
+        entry.intersectionSplit = intersectionSplit;
         sendPltData(splittingVehicle, SPLIT_DONE, myPlnID, entry);
 
         // reset manualSplit after sending it in SPLIT_DONE
@@ -1637,9 +1661,19 @@ void ApplVPlatoonMg::split_DataFSM(PlatoonMsg *wsm)
                     TraCI->vehicleSetSpeed(SUMOID, 30.); // set max speed
             }
             else
-//                TraCI->vehicleSetSpeed(SUMOID, 20); // set max speed
-                TraCI->vehicleSetSpeed(SUMOID, 7.5); // for example1
-
+            {
+                if(wsm->getValue().intersectionSplit)
+                {
+                    double afterSplitSpeed = TraCI->vehicleGetSpeed(SUMOID) / 2;
+                    TraCI->vehicleSetSpeed(SUMOID, afterSplitSpeed); // for example
+                    std::cout << "intersectionSplit, set speed " << afterSplitSpeed << std::endl << std::endl;
+                }
+                else
+                {
+                    TraCI->vehicleSetSpeed(SUMOID, 20); // set max speed
+                    std::cout << "regularSplit, set speed 20" << std::endl << std::endl;
+                }
+            }
             setVehicleState(state_waitForGap);
 
             // check each updateInterval to see if the gap is big enough

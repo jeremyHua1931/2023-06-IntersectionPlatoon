@@ -59,6 +59,7 @@ private:
 
     bool busy = false;
     bool haveSendPltInfo = false; // leader only send once when entering ZONE
+    bool intersectionSplit = false;
 
     // --[ entry ]--
     omnetpp::cMessage* entryManeuverEvt = NULL;

@@ -227,7 +227,12 @@ ApplRSUIntersection::CtrlValue ApplRSUIntersection::getCtrlValue(double TG, TraC
     }
     else
     {
-        refAcc = -0.18;
+        refAcc = 0.0516024; // example1
+        refVelocity = 4.88323;
+//        refAcc = 0.688052; // example2
+//        refVelocity = 2.48375;
+//        refAcc = 0.502018; // example3
+//        refVelocity = 3.51782;
     }
     // TO del end
 

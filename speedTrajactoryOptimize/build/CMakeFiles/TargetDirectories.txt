@@ -1,0 +1,3 @@
+/home/jeremy/ipoptTest/build/CMakeFiles/rebuild_cache.dir
+/home/jeremy/ipoptTest/build/CMakeFiles/optimizeSpeedAcc.dir
+/home/jeremy/ipoptTest/build/CMakeFiles/edit_cache.dir
